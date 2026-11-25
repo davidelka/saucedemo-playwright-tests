@@ -46,139 +46,178 @@ def row(report: str, test_id: str) -> str:
     return next(line for line in report.splitlines() if line.startswith(f"| {test_id} "))
 
 
-@tc("TC-UNIT-001")
-def test_tc_rejects_malformed_id() -> None:
-    with pytest.raises(ValueError, match="LOGIN-1"):
-        tc("LOGIN-1")
+class TestTcMarker:
+    """The tc() marker and its ID format."""
+
+    @tc("TC-UNIT-001")
+    def test_tc_rejects_malformed_id(self) -> None:
+        with pytest.raises(ValueError, match="LOGIN-1"):
+            tc("LOGIN-1")
 
 
-@tc("TC-UNIT-002")
-def test_load_test_plan_parses_rows(tmp_path: Path) -> None:
-    plan = tmp_path / "TEST_PLAN.md"
-    plan.write_text(PLAN)
-    rows = load_test_plan(plan)
-    assert list(rows) == ["TC-A-001", "TC-A-002", "TC-A-003", "TC-A-004"]
-    assert rows["TC-A-001"] == PlanRow("TC-A-001", "first", "Automated")
-    assert rows["TC-A-004"].status == "Manual"
+class TestLoadTestPlan:
+    """Reading TEST_PLAN.md."""
+
+    @tc("TC-UNIT-002")
+    def test_load_test_plan_parses_rows(self, tmp_path: Path) -> None:
+        plan = tmp_path / "TEST_PLAN.md"
+        plan.write_text(PLAN)
+        rows = load_test_plan(plan)
+        assert list(rows) == ["TC-A-001", "TC-A-002", "TC-A-003", "TC-A-004"]
+        assert rows["TC-A-001"] == PlanRow("TC-A-001", "first", "Automated")
+        assert rows["TC-A-004"].status == "Manual"
 
 
-@tc("TC-UNIT-003")
-def test_report_shows_passed_failed_and_not_run(project: pytest.Pytester) -> None:
-    project.makepyfile(
-        test_x="""
-        from framework.testcase import tc
-        @tc("TC-A-001")
-        def test_one(): pass
-        @tc("TC-A-002")
-        def test_two(): assert False
-        """
-    )
-    result, report = run_and_read(project)
-    result.assert_outcomes(passed=1, failed=1)
-    assert "passed" in row(report, "TC-A-001")
-    assert "test_x.py::test_one" in row(report, "TC-A-001")
-    assert "FAILED" in row(report, "TC-A-002")
-    assert "not run" in row(report, "TC-A-003")
-    assert "Manual" in row(report, "TC-A-004")
+class TestTraceabilityReport:
+    """The plan-vs-results report written after the run."""
+
+    @tc("TC-UNIT-003")
+    def test_report_shows_passed_failed_and_not_run(self, project: pytest.Pytester) -> None:
+        project.makepyfile(
+            test_x="""
+            from framework.testcase import tc
+            @tc("TC-A-001")
+            def test_one(): pass
+            @tc("TC-A-002")
+            def test_two(): assert False
+            """
+        )
+        result, report = run_and_read(project)
+        result.assert_outcomes(passed=1, failed=1)
+        assert "passed" in row(report, "TC-A-001")
+        assert "test_x.py::test_one" in row(report, "TC-A-001")
+        assert "FAILED" in row(report, "TC-A-002")
+        assert "not run" in row(report, "TC-A-003")
+        assert "Manual" in row(report, "TC-A-004")
+
+    @tc("TC-UNIT-004")
+    def test_report_shows_expected_failures_and_skips(self, project: pytest.Pytester) -> None:
+        project.makepyfile(
+            test_x="""
+            import pytest
+            from framework.testcase import tc
+            @tc("TC-A-001")
+            @pytest.mark.xfail(strict=True, reason="BUG-001")
+            def test_known_bug(): assert False
+            @tc("TC-A-002")
+            @pytest.mark.skip(reason="not today")
+            def test_skipped(): pass
+            """
+        )
+        _, report = run_and_read(project)
+        assert "expected failure" in row(report, "TC-A-001")
+        assert "skipped" in row(report, "TC-A-002")
+
+    @tc("TC-UNIT-005")
+    def test_report_worst_outcome_wins_for_repeated_id(self, project: pytest.Pytester) -> None:
+        # One ID that runs several times (per browser, per case) fails if any run fails.
+        project.makepyfile(
+            test_x="""
+            import pytest
+            from framework.testcase import tc
+            @tc("TC-A-001")
+            @pytest.mark.parametrize("n", [1, 2])
+            def test_twice(n): assert n == 1
+            @pytest.mark.parametrize("n", [
+                pytest.param(1, marks=tc("TC-A-002")),
+                pytest.param(2, marks=tc("TC-A-003")),
+            ])
+            def test_cases(n): pass
+            """
+        )
+        _, report = run_and_read(project)
+        assert "FAILED" in row(report, "TC-A-001")
+        assert "test_twice[1]" in row(report, "TC-A-001")
+        assert "test_twice[2]" in row(report, "TC-A-001")
+        assert "passed" in row(report, "TC-A-002")
+        assert "passed" in row(report, "TC-A-003")
+
+    @tc("TC-UNIT-006")
+    def test_report_lists_tests_without_id_and_unknown_ids(self, project: pytest.Pytester) -> None:
+        project.makepyfile(
+            test_x="""
+            from framework.testcase import tc
+            def test_no_id(): pass
+            @tc("TC-A-999")
+            def test_unknown(): pass
+            """
+        )
+        result, report = run_and_read(project)
+        result.assert_outcomes(passed=2)  # never blocks the run
+        no_id, unknown = report.split("## Tests without a test-case ID")[1].split(
+            "## IDs not in TEST_PLAN.md"
+        )
+        assert "test_x.py::test_no_id" in no_id
+        assert "TC-A-999" in unknown
+        assert "test_x.py::test_unknown" in unknown
 
 
-@tc("TC-UNIT-004")
-def test_report_shows_expected_failures_and_skips(project: pytest.Pytester) -> None:
-    project.makepyfile(
-        test_x="""
-        import pytest
-        from framework.testcase import tc
-        @tc("TC-A-001")
-        @pytest.mark.xfail(strict=True, reason="BUG-001")
-        def test_known_bug(): assert False
-        @tc("TC-A-002")
-        @pytest.mark.skip(reason="not today")
-        def test_skipped(): pass
-        """
-    )
-    _, report = run_and_read(project)
-    assert "expected failure" in row(report, "TC-A-001")
-    assert "skipped" in row(report, "TC-A-002")
+class TestTcSelection:
+    """Selecting tests by ID with --tc."""
+
+    @tc("TC-UNIT-007")
+    def test_tc_option_selects_by_id(self, project: pytest.Pytester) -> None:
+        project.makepyfile(
+            test_x="""
+            from framework.testcase import tc
+            @tc("TC-A-001")
+            def test_one(): pass
+            @tc("TC-A-002")
+            def test_two(): pass
+            """
+        )
+        result, report = run_and_read(project, "--tc", "TC-A-001")
+        result.assert_outcomes(passed=1, deselected=1)
+        assert "passed" in row(report, "TC-A-001")
+        assert "not run" in row(report, "TC-A-002")
 
 
-@tc("TC-UNIT-005")
-def test_report_worst_outcome_wins_for_repeated_id(project: pytest.Pytester) -> None:
-    # One ID that runs several times (per browser, per case) fails if any run fails.
-    project.makepyfile(
-        test_x="""
-        import pytest
-        from framework.testcase import tc
-        @tc("TC-A-001")
-        @pytest.mark.parametrize("n", [1, 2])
-        def test_twice(n): assert n == 1
-        @pytest.mark.parametrize("n", [
-            pytest.param(1, marks=tc("TC-A-002")),
-            pytest.param(2, marks=tc("TC-A-003")),
-        ])
-        def test_cases(n): pass
-        """
-    )
-    _, report = run_and_read(project)
-    assert "FAILED" in row(report, "TC-A-001")
-    assert "test_twice[1]" in row(report, "TC-A-001")
-    assert "test_twice[2]" in row(report, "TC-A-001")
-    assert "passed" in row(report, "TC-A-002")
-    assert "passed" in row(report, "TC-A-003")
+class TestReportUnderXdist:
+    """Results from parallel workers reach the report."""
+
+    @tc("TC-UNIT-008")
+    def test_report_collects_results_from_xdist_workers(
+        self, project: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("PYTHONPATH", str(Path(__file__).resolve().parents[2]))
+        project.makepyfile(
+            test_x="""
+            from framework.testcase import tc
+            @tc("TC-A-001")
+            def test_one(): pass
+            @tc("TC-A-002")
+            def test_two(): assert False
+            """
+        )
+        result = project.runpytest_subprocess(f"--traceability-report={REPORT}", "-n", "2")
+        result.assert_outcomes(passed=1, failed=1)
+        report = (project.path / REPORT).read_text()
+        assert "passed" in row(report, "TC-A-001")
+        assert "FAILED" in row(report, "TC-A-002")
 
 
-@tc("TC-UNIT-006")
-def test_report_lists_tests_without_id_and_unknown_ids(project: pytest.Pytester) -> None:
-    project.makepyfile(
-        test_x="""
-        from framework.testcase import tc
-        def test_no_id(): pass
-        @tc("TC-A-999")
-        def test_unknown(): pass
-        """
-    )
-    result, report = run_and_read(project)
-    result.assert_outcomes(passed=2)  # never blocks the run
-    no_id, unknown = report.split("## Tests without a test-case ID")[1].split(
-        "## IDs not in TEST_PLAN.md"
-    )
-    assert "test_x.py::test_no_id" in no_id
-    assert "TC-A-999" in unknown
-    assert "test_x.py::test_unknown" in unknown
+class TestRunWithoutPlan:
+    """Running without TEST_PLAN.md."""
 
+    @tc("TC-UNIT-011")
+    def test_no_test_plan_flag_skips_plan_and_report(self, project: pytest.Pytester) -> None:
+        project.makepyfile(
+            test_x="""
+            from framework.testcase import tc
+            @tc("TC-A-001")
+            def test_one(): pass
+            """
+        )
+        result = project.runpytest(f"--traceability-report={REPORT}", "--no-test-plan")
+        result.assert_outcomes(passed=1)
+        assert not (project.path / REPORT).exists()
+        result.stdout.no_fnmatch_line("*traceability report*")
 
-@tc("TC-UNIT-007")
-def test_tc_option_selects_by_id(project: pytest.Pytester) -> None:
-    project.makepyfile(
-        test_x="""
-        from framework.testcase import tc
-        @tc("TC-A-001")
-        def test_one(): pass
-        @tc("TC-A-002")
-        def test_two(): pass
-        """
-    )
-    result, report = run_and_read(project, "--tc", "TC-A-001")
-    result.assert_outcomes(passed=1, deselected=1)
-    assert "passed" in row(report, "TC-A-001")
-    assert "not run" in row(report, "TC-A-002")
-
-
-@tc("TC-UNIT-008")
-def test_report_collects_results_from_xdist_workers(
-    project: pytest.Pytester, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setenv("PYTHONPATH", str(Path(__file__).resolve().parents[2]))
-    project.makepyfile(
-        test_x="""
-        from framework.testcase import tc
-        @tc("TC-A-001")
-        def test_one(): pass
-        @tc("TC-A-002")
-        def test_two(): assert False
-        """
-    )
-    result = project.runpytest_subprocess(f"--traceability-report={REPORT}", "-n", "2")
-    result.assert_outcomes(passed=1, failed=1)
-    report = (project.path / REPORT).read_text()
-    assert "passed" in row(report, "TC-A-001")
-    assert "FAILED" in row(report, "TC-A-002")
+    @tc("TC-UNIT-012")
+    def test_missing_plan_is_reported_not_fatal(self, project: pytest.Pytester) -> None:
+        (project.path / "TEST_PLAN.md").unlink()
+        project.makepyfile(test_x="def test_one(): pass")
+        result = project.runpytest(f"--traceability-report={REPORT}")
+        result.assert_outcomes(passed=1)
+        assert not (project.path / REPORT).exists()
+        result.stdout.fnmatch_lines(["*traceability report skipped: TEST_PLAN.md not found*"])

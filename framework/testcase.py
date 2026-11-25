@@ -149,6 +149,7 @@ class TraceabilityReport:
         self.outcomes: dict[str, list[str]] = {}
         self.test_ids: dict[str, str | None] = {}
         self.written: Path | None = None
+        self.skipped: str | None = None
 
     def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
         # Under xdist this runs on the controller with reports sent back by the
@@ -167,6 +168,7 @@ class TraceabilityReport:
             return
         plan_path = self.config.rootpath / PLAN_FILE
         if not plan_path.exists():
+            self.skipped = f"{PLAN_FILE} not found (pass --no-test-plan to run without it)"
             return
         results = {
             nodeid: (self.test_ids.get(nodeid), worst(outcomes))
@@ -184,6 +186,8 @@ class TraceabilityReport:
     def pytest_terminal_summary(self, terminalreporter: pytest.TerminalReporter) -> None:
         if self.written:
             terminalreporter.write_line(f"traceability report: {self.written}")
+        elif self.skipped:
+            terminalreporter.write_line(f"traceability report skipped: {self.skipped}")
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -203,11 +207,18 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help=f"Where to write the plan-vs-results report (default {DEFAULT_REPORT}; "
         "empty to disable).",
     )
+    group.addoption(
+        "--no-test-plan",
+        action="store_true",
+        default=False,
+        help=f"Don't read {PLAN_FILE} and don't write the traceability report.",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "tc(id): test-case ID from TEST_PLAN.md")
-    config.pluginmanager.register(TraceabilityReport(config), "traceability-report")
+    if not config.getoption("no_test_plan"):
+        config.pluginmanager.register(TraceabilityReport(config), "traceability-report")
 
 
 def _test_id(item: pytest.Item) -> str | None:

@@ -13,6 +13,10 @@ report appears on the run's summary page.
 Run by ID: `uv run pytest --tc TC-LOGIN-001` or `uv run pytest --tc TC-CART-001,TC-CART-002`.
 The HTML report also has a **Test ID** column.
 
+To run without this file, pass `--no-test-plan`: it is never read and no
+traceability report is written. If the file is missing without the flag, the run
+still completes and the terminal says the report was skipped.
+
 **Status:** `Automated` = covered by a test in `tests/` · `Manual` = checked by hand,
 see the notes · `Not automated` = deliberately left out, see STRATEGY.md.
 
@@ -63,3 +67,5 @@ P3 = minor or cosmetic.
 | TC-UNIT-008 | Report collects results from parallel (xdist) workers | P2 | unit | Automated |
 | TC-UNIT-009 | Layer tag (`ui`, `unit`…) is added from the test's folder | P3 | unit | Automated |
 | TC-UNIT-010 | User tag (`user_problem`…) is added from the user a test runs as | P3 | unit | Automated |
+| TC-UNIT-011 | `--no-test-plan` runs the tests without reading the plan or writing the report | P3 | unit | Automated |
+| TC-UNIT-012 | A missing TEST_PLAN.md skips the report with a message and never fails the run | P3 | unit | Automated |
