@@ -1,17 +1,17 @@
 # Test Plan: Sauce Demo
 
-Every automated test carries exactly one test-case ID from this file, set with
+Every automated test carries one test-case ID from this file, set with
 `@tc("TC-<AREA>-<NNN>")` (for parametrized tests, one ID per case via
-`pytest.param(..., marks=tc(...))`). Pytest checks this mapping at collection time:
+`pytest.param(..., marks=tc(...))`).
 
-- a test with no ID, an ID that isn't listed here, or an ID whose status isn't
-  `Automated` stops the run with a usage error;
-- two different tests sharing one ID stop the run (running the same test in
-  several browsers is fine);
-- `--check-test-plan` also fails when an `Automated` row below has no test. CI runs it.
+Nothing is checked before a run. Select what to run (`-m checkout`, `--tc TC-LOGIN-001`),
+and after the run pytest writes **`reports/traceability.md`**. It lists every case below
+with its result (passed, failed, expected failure, skipped, not run) and the tests that
+ran it, plus any test without an ID and any ID missing from this file. In CI the same
+report appears on the run's summary page.
 
-Run a single case or a few: `uv run pytest --tc TC-LOGIN-001` or
-`uv run pytest --tc TC-CART-001,TC-CART-002`. The HTML report has a **Test ID** column.
+Run by ID: `uv run pytest --tc TC-LOGIN-001` or `uv run pytest --tc TC-CART-001,TC-CART-002`.
+The HTML report also has a **Test ID** column.
 
 **Status:** `Automated` = covered by a test in `tests/` · `Manual` = checked by hand,
 see the notes · `Not automated` = deliberately left out, see STRATEGY.md.
@@ -31,11 +31,12 @@ P3 = minor or cosmetic.
 | ID | Title | Priority | Tags | Status |
 |----|-------|----------|------|--------|
 | TC-UNIT-001 | `tc()` rejects a malformed test-case ID | P3 | unit | Automated |
-| TC-UNIT-002 | TEST_PLAN.md rows are parsed into ID → status | P2 | unit | Automated |
-| TC-UNIT-003 | Collection fails for a test without an ID | P2 | unit | Automated |
-| TC-UNIT-004 | Collection fails for an ID not in the plan | P2 | unit | Automated |
-| TC-UNIT-005 | Collection fails when two tests share an ID | P2 | unit | Automated |
-| TC-UNIT-006 | Collection fails for an ID whose status isn't Automated | P3 | unit | Automated |
-| TC-UNIT-007 | Each parametrized case can carry its own ID | P2 | unit | Automated |
-| TC-UNIT-008 | `--tc` selects tests by ID | P3 | unit | Automated |
-| TC-UNIT-009 | `--check-test-plan` flags Automated rows without a test | P3 | unit | Automated |
+| TC-UNIT-002 | TEST_PLAN.md rows are parsed into ID, title and status | P2 | unit | Automated |
+| TC-UNIT-003 | Report shows passed, failed and not-run plan cases | P2 | unit | Automated |
+| TC-UNIT-004 | Report shows expected failures and skips | P2 | unit | Automated |
+| TC-UNIT-005 | Report: worst outcome wins when one ID runs several times | P2 | unit | Automated |
+| TC-UNIT-006 | Report lists tests without an ID and IDs not in the plan | P2 | unit | Automated |
+| TC-UNIT-007 | `--tc` selects tests by ID; the rest show as not run | P3 | unit | Automated |
+| TC-UNIT-008 | Report collects results from parallel (xdist) workers | P2 | unit | Automated |
+| TC-UNIT-009 | Layer tag (`ui`, `unit`…) is added from the test's folder | P3 | unit | Automated |
+| TC-UNIT-010 | User tag (`user_problem`…) is added from the user a test runs as | P3 | unit | Automated |

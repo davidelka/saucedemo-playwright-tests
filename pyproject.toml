@@ -25,11 +25,30 @@ pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "--strict-markers"
 markers = [
+    # Suite: how often it runs
     "smoke: fast critical-path checks, run on every PR",
     "regression: full functional coverage",
-    "bug: exposes a known bug (expected failure, see BUGS.md)",
+    # Layer (added automatically from the folder, see framework/tagging.py)
     "unit: framework unit tests, no browser",
+    "ui: browser tests against the site",
     "visual: screenshot comparison tests (run in Docker)",
+    # Feature
+    "login: login and session",
+    "inventory: product list and sorting",
+    "cart: cart badge and contents",
+    "checkout: checkout flow, totals and validation",
+    # Flow
+    "happy: positive flow, valid input",
+    "negative: invalid input or a blocked action",
+    # Known bugs
+    "bug: exposes a known bug (expected failure, see BUGS.md)",
+    # User (added automatically from the user a test runs as)
+    "user_standard: runs as standard_user",
+    "user_locked_out: runs as locked_out_user",
+    "user_problem: runs as problem_user",
+    "user_performance_glitch: runs as performance_glitch_user",
+    "user_error: runs as error_user",
+    "user_visual: runs as visual_user",
 ]
 
 [tool.ruff]

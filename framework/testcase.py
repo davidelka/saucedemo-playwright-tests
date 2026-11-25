@@ -1,15 +1,21 @@
-"""Test-case ID traceability between automated tests and ``TEST_PLAN.md``.
+"""Test-case IDs and the post-run traceability report.
 
-Every test carries exactly one ``@tc("TC-<AREA>-<NNN>")`` mark, and every ID must
-be a row in TEST_PLAN.md whose status is ``Automated``. Collection stops with a
-usage error that lists every problem at once, so the plan and the code can't drift.
+Each test carries one ``@tc("TC-<AREA>-<NNN>")`` mark linking it to a row in
+``TEST_PLAN.md``. Nothing is checked before the run: you select what to run
+(``-m``, ``-k``, ``--tc``), pytest runs it, and at the end this plugin compares
+the plan with what actually happened and writes a Markdown report:
+which plan cases passed, failed, or didn't run, plus tests that have no ID or
+an ID the plan doesn't know.
 
 Loaded as a pytest plugin via ``pytest_plugins = ["framework.testcase"]``.
 """
 
+import os
 import re
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -17,8 +23,27 @@ TEST_ID_RE = re.compile(r"^TC-[A-Z]+-\d{3}$")
 PLAN_ROW_RE = re.compile(r"^\|\s*(TC-[A-Z]+-\d{3})\s*\|(.*)\|\s*$")
 PLAN_FILE = "TEST_PLAN.md"
 AUTOMATED = "Automated"
-# pytest-playwright runs the same test once per browser; those runs share an ID.
-BROWSER_PARAM = "browser_name"
+DEFAULT_REPORT = "reports/traceability.md"
+TEST_ID_PROPERTY = "test_id"
+
+# When one ID runs several times (once per browser, or per parametrized case),
+# the worst outcome wins. Earlier in this list = worse.
+OUTCOME_SEVERITY = ["failed", "error", "passed", "xfailed", "skipped"]
+OUTCOME_LABEL = {
+    "failed": "❌ FAILED",
+    "error": "❌ ERROR",
+    "passed": "✅ passed",
+    "xfailed": "🟡 expected failure (known bug)",
+    "skipped": "⏭ skipped",
+}
+NOT_RUN = "⚪ not run"
+
+
+@dataclass(frozen=True)
+class PlanRow:
+    test_id: str
+    title: str
+    status: str
 
 
 def tc(test_id: str) -> pytest.MarkDecorator:
@@ -28,22 +53,141 @@ def tc(test_id: str) -> pytest.MarkDecorator:
     return pytest.mark.tc(test_id)
 
 
-def load_test_plan(path: Path) -> dict[str, str]:
-    """Return ``{test_id: status}`` from the Markdown tables in TEST_PLAN.md."""
-    plan: dict[str, str] = {}
+def load_test_plan(path: Path) -> dict[str, PlanRow]:
+    """Read the ``| ID | Title | ... | Status |`` table rows of TEST_PLAN.md, in file order."""
+    plan: dict[str, PlanRow] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         match = PLAN_ROW_RE.match(line.strip())
         if not match:
             continue
         test_id, rest = match.groups()
+        cells = [c.strip() for c in rest.split("|")]
         if test_id in plan:
             raise ValueError(f"{path.name}: duplicate row for {test_id}")
-        plan[test_id] = rest.split("|")[-1].strip()
+        plan[test_id] = PlanRow(test_id, title=cells[0], status=cells[-1])
     return plan
 
 
+def outcome_of(report: pytest.TestReport) -> str | None:
+    """The outcome one phase report decides for its test, or None if it decides nothing.
+
+    A test produces three reports (setup, call, teardown). The call report carries
+    the real result; setup/teardown only matter when they fail or skip.
+    """
+    if report.outcome == "rerun":  # pytest-rerunfailures: a later attempt follows
+        return None
+    xfailed = hasattr(report, "wasxfail")
+    if report.when == "call":
+        if xfailed:
+            # An xpass in strict mode is reported as a plain failure by pytest.
+            return "xfailed" if report.skipped else "passed"
+        return report.outcome
+    if report.failed:
+        return "error"
+    if report.skipped and report.when == "setup":
+        return "xfailed" if xfailed else "skipped"
+    return None
+
+
+def worst(outcomes: Iterable[str]) -> str:
+    return min(outcomes, key=OUTCOME_SEVERITY.index)
+
+
+def build_report(plan: dict[str, PlanRow], results: dict[str, tuple[str | None, str]]) -> str:
+    """Render the report. ``results`` maps nodeid -> (test-case ID or None, outcome)."""
+    by_id: dict[str, list[tuple[str, str]]] = {}
+    no_id: list[str] = []
+    for nodeid, (test_id, outcome) in results.items():
+        if test_id is None:
+            no_id.append(nodeid)
+        else:
+            by_id.setdefault(test_id, []).append((nodeid, outcome))
+
+    rows, counts = [], {label: 0 for label in [*OUTCOME_LABEL.values(), NOT_RUN]}
+    for row in plan.values():
+        runs = by_id.get(row.test_id, [])
+        if runs:
+            result = OUTCOME_LABEL[worst(o for _, o in runs)]
+        elif row.status == AUTOMATED:
+            result = NOT_RUN
+        else:
+            result = row.status  # Manual / Not automated: not expected to run
+        if result in counts:
+            counts[result] += 1
+        tests = "<br>".join(f"`{nodeid}`" for nodeid, _ in runs) or "–"
+        rows.append(f"| {row.test_id} | {row.title} | {result} | {tests} |")
+
+    unknown = sorted((tid, n) for tid, runs in by_id.items() if tid not in plan for n, _ in runs)
+    summary = " · ".join(f"{label}: {n}" for label, n in counts.items() if n)
+    lines = [
+        "# Traceability report",
+        "",
+        f"Generated {datetime.now():%Y-%m-%d %H:%M} against `{PLAN_FILE}` "
+        f"({len(plan)} cases). {summary}",
+        "",
+        "| ID | Title | Result | Tests |",
+        "|----|-------|--------|-------|",
+        *rows,
+        "",
+        "## Tests without a test-case ID",
+        "",
+        *([f"- `{n}`" for n in sorted(no_id)] or ["None."]),
+        "",
+        f"## IDs not in {PLAN_FILE}",
+        "",
+        *([f"- {tid}: `{n}`" for tid, n in unknown] or ["None."]),
+        "",
+    ]
+    return "\n".join(lines)
+
+
+class TraceabilityReport:
+    """Collects each test's ID and outcome during the run, writes the report at the end."""
+
+    def __init__(self, config: pytest.Config) -> None:
+        self.config = config
+        self.outcomes: dict[str, list[str]] = {}
+        self.test_ids: dict[str, str | None] = {}
+        self.written: Path | None = None
+
+    def pytest_runtest_logreport(self, report: pytest.TestReport) -> None:
+        # Under xdist this runs on the controller with reports sent back by the
+        # workers; user_properties travel with them.
+        test_id = dict(report.user_properties).get(TEST_ID_PROPERTY)
+        self.test_ids.setdefault(report.nodeid, str(test_id) if test_id else None)
+        outcome = outcome_of(report)
+        if outcome:
+            self.outcomes.setdefault(report.nodeid, []).append(outcome)
+
+    def pytest_sessionfinish(self, session: pytest.Session) -> None:
+        path_option = self.config.getoption("traceability_report")
+        if hasattr(self.config, "workerinput") or self.config.option.collectonly:
+            return  # xdist worker, or nothing ran
+        if not path_option:
+            return
+        plan_path = self.config.rootpath / PLAN_FILE
+        if not plan_path.exists():
+            return
+        results = {
+            nodeid: (self.test_ids.get(nodeid), worst(outcomes))
+            for nodeid, outcomes in self.outcomes.items()
+        }
+        text = build_report(load_test_plan(plan_path), results)
+        out = self.config.rootpath / path_option
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        self.written = out
+        if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
+            with open(summary, "a", encoding="utf-8") as fh:
+                fh.write(text + "\n")
+
+    def pytest_terminal_summary(self, terminalreporter: pytest.TerminalReporter) -> None:
+        if self.written:
+            terminalreporter.write_line(f"traceability report: {self.written}")
+
+
 def pytest_addoption(parser: pytest.Parser) -> None:
-    group = parser.getgroup("test-plan", "test-case ID traceability")
+    group = parser.getgroup("test-plan", "test-case IDs and traceability report")
     group.addoption(
         "--tc",
         action="store",
@@ -52,79 +196,33 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Run only tests with these TEST_PLAN.md IDs.",
     )
     group.addoption(
-        "--check-test-plan",
-        action="store_true",
-        default=False,
-        help="Also fail if an 'Automated' plan row has no collected test.",
+        "--traceability-report",
+        action="store",
+        default=DEFAULT_REPORT,
+        metavar="PATH",
+        help=f"Where to write the plan-vs-results report (default {DEFAULT_REPORT}; "
+        "empty to disable).",
     )
 
 
 def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "tc(id): test-case ID from TEST_PLAN.md")
-
-
-def _case_key(item: pytest.Item) -> tuple[Any, ...]:
-    """Identify a test case independent of which browser it runs in."""
-    callspec = getattr(item, "callspec", None)
-    params = (
-        tuple(sorted((k, repr(v)) for k, v in callspec.params.items() if k != BROWSER_PARAM))
-        if callspec
-        else ()
-    )
-    return (str(item.path), getattr(item, "originalname", item.name), params)
+    config.pluginmanager.register(TraceabilityReport(config), "traceability-report")
 
 
 def _test_id(item: pytest.Item) -> str | None:
-    marks = list(item.iter_markers("tc"))
-    return marks[0].args[0] if len(marks) == 1 else None
+    mark = item.get_closest_marker("tc")
+    return mark.args[0] if mark else None
 
 
-def pytest_collection_modifyitems(
-    session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
-) -> None:
-    plan_path = config.rootpath / PLAN_FILE
-    if not plan_path.exists():
-        raise pytest.UsageError(f"{PLAN_FILE} not found at {plan_path}")
-    plan = load_test_plan(plan_path)
-
-    problems: list[str] = []
-    owner: dict[str, tuple[tuple[Any, ...], str]] = {}  # id -> (case key, first nodeid)
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     for item in items:
-        marks = list(item.iter_markers("tc"))
-        if not marks:
-            problems.append(f"{item.nodeid}: no test-case ID (add @tc('TC-...'))")
-            continue
-        if len(marks) > 1:
-            ids = ", ".join(m.args[0] for m in marks)
-            problems.append(f"{item.nodeid}: more than one test-case ID ({ids})")
-            continue
-        test_id = marks[0].args[0]
-        item.user_properties.append(("test_id", test_id))
-        if test_id not in plan:
-            problems.append(f"{item.nodeid}: {test_id} is not in {PLAN_FILE}")
-        elif plan[test_id] != AUTOMATED:
-            problems.append(
-                f"{item.nodeid}: {test_id} has status {plan[test_id]!r} in {PLAN_FILE}, "
-                f"expected {AUTOMATED!r}"
-            )
-        key = _case_key(item)
-        if test_id in owner and owner[test_id][0] != key:
-            problems.append(f"{item.nodeid}: {test_id} is already used by {owner[test_id][1]}")
-        owner.setdefault(test_id, (key, item.nodeid))
+        if test_id := _test_id(item):
+            item.user_properties.append((TEST_ID_PROPERTY, test_id))
 
-    if config.getoption("check_test_plan"):
-        for test_id, status in plan.items():
-            if status == AUTOMATED and test_id not in owner:
-                problems.append(f"{PLAN_FILE}: {test_id} is 'Automated' but no test has it")
-
-    if problems:
-        raise pytest.UsageError(
-            "Test-case ID problems:\n" + "\n".join(f"  - {p}" for p in problems)
-        )
-
-    selected_ids = config.getoption("tc")
-    if selected_ids:
-        wanted = {s.strip() for s in selected_ids.split(",") if s.strip()}
+    selected = config.getoption("tc")
+    if selected:
+        wanted = {s.strip() for s in selected.split(",") if s.strip()}
         keep = [i for i in items if _test_id(i) in wanted]
         drop = [i for i in items if _test_id(i) not in wanted]
         if drop:
@@ -139,5 +237,5 @@ def pytest_html_results_table_header(cells: list[str]) -> None:
 
 @pytest.hookimpl(optionalhook=True)
 def pytest_html_results_table_row(report: pytest.TestReport, cells: list[str]) -> None:
-    test_id = dict(report.user_properties).get("test_id", "")
+    test_id = dict(report.user_properties).get(TEST_ID_PROPERTY, "")
     cells.insert(1, f"<td>{test_id}</td>")

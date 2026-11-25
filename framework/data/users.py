@@ -10,3 +10,7 @@ class User(StrEnum):
     PERFORMANCE_GLITCH = "performance_glitch_user"
     ERROR = "error_user"
     VISUAL = "visual_user"
+
+
+# The user a test logs in as unless it parametrizes ``user``.
+DEFAULT_USER = User.STANDARD
