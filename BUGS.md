@@ -14,6 +14,8 @@ Every bug has an automated test marked with `xfail_bug(...)` (see `framework/bug
   That's the signal to remove the marker and close the bug.
 - Tests that run as several users also run as `standard_user`, where they must pass: that
   proves the test checks the right thing.
+- Bug tests live with the other tests of their feature (`tests/ui/test_cart.py` and so on),
+  tagged `bug`. When a bug is fixed, only its `xfail_bug` marker is removed.
 
 Run only the bug tests:
 
@@ -48,7 +50,7 @@ wrong behavior with a workaround, or bad data · Low = cosmetic.
 |---|---|
 | Severity | Medium: creates orders with no items (bad data), no money is lost |
 | User | `standard_user` (other users not checked) |
-| Test | TC-CHECKOUT-008, `tests/bugs/test_checkout_bugs.py::test_empty_cart_cannot_be_checked_out` |
+| Test | TC-CHECKOUT-008, `tests/ui/test_checkout.py::test_empty_cart_cannot_be_checked_out` |
 | Found | Manually (David), then confirmed with a script |
 
 **Steps**
@@ -73,7 +75,7 @@ differently from other prices). Step 4 shows "Thank you for your order!".
 |---|---|
 | Severity | Medium: customers can't see what they're buying; nothing is blocked |
 | User | `problem_user` |
-| Test | TC-INV-003, `tests/bugs/test_inventory_bugs.py::test_each_product_has_its_own_image` |
+| Test | TC-INV-003, `tests/ui/test_inventory.py::test_each_product_has_its_own_image` |
 
 **Steps**
 
@@ -92,7 +94,7 @@ differently from other prices). Step 4 shows "Thank you for your order!".
 |---|---|
 | Severity | Medium: a listed feature doesn't work; you can still browse all products |
 | User | `problem_user` |
-| Test | TC-SORT-006, `tests/bugs/test_inventory_bugs.py::test_sorting_works_without_errors` |
+| Test | TC-SORT-006, `tests/ui/test_sorting.py::test_sorting_works_without_errors` |
 
 **Steps**
 
@@ -111,7 +113,7 @@ differently from other prices). Step 4 shows "Thank you for your order!".
 |---|---|
 | Severity | High: a customer may add the wrong item; one product's page can't be opened at all |
 | User | `problem_user` |
-| Test | TC-INV-005, `tests/bugs/test_inventory_bugs.py::test_product_link_opens_that_product` |
+| Test | TC-INV-005, `tests/ui/test_inventory.py::test_product_link_opens_that_product` |
 
 **Steps**
 
@@ -132,7 +134,7 @@ T-Shirt (Red) → Backpack. Fleece Jacket opens a page saying "ITEM NOT FOUND".
 |---|---|
 | Severity | High: half the catalog can't be bought |
 | User | `problem_user`, `error_user` |
-| Test | TC-CART-006, TC-CART-007, `tests/bugs/test_cart_bugs.py::test_every_product_can_be_added` |
+| Test | TC-CART-006, TC-CART-007, `tests/ui/test_cart.py::test_every_product_can_be_added` |
 
 **Steps**
 
@@ -154,7 +156,7 @@ isn't in the cart. Backpack, Bike Light and Onesie can be added.
 |---|---|
 | Severity | Medium: workaround exists (Remove on the cart page works) |
 | User | `problem_user`, `error_user` |
-| Test | TC-CART-009, TC-CART-010, `tests/bugs/test_cart_bugs.py::test_product_can_be_removed_from_the_list` |
+| Test | TC-CART-009, TC-CART-010, `tests/ui/test_cart.py::test_product_can_be_removed_from_the_list` |
 
 **Steps**
 
@@ -175,7 +177,7 @@ that can be added: Backpack, Bike Light, Onesie). Removing it on the cart page w
 |---|---|
 | Severity | High: this user can't complete any purchase |
 | User | `problem_user` |
-| Test | TC-CHECKOUT-010, `tests/bugs/test_checkout_bugs.py::test_checkout_fields_keep_what_you_type` |
+| Test | TC-CHECKOUT-010, `tests/ui/test_checkout.py::test_checkout_fields_keep_what_you_type` |
 
 **Steps**
 
@@ -196,7 +198,7 @@ that can be added: Backpack, Bike Light, Onesie). Removing it on the cart page w
 |---|---|
 | Severity | Medium: a listed feature doesn't work and shows an error; browsing still works |
 | User | `error_user` |
-| Test | TC-SORT-007, `tests/bugs/test_inventory_bugs.py::test_sorting_works_without_errors` |
+| Test | TC-SORT-007, `tests/ui/test_sorting.py::test_sorting_works_without_errors` |
 
 **Steps**
 
@@ -217,7 +219,7 @@ and the list stays in the default order. The browser console logs
 |---|---|
 | Severity | Medium: orders are placed without a last name (bad data); required-field check bypassed |
 | User | `error_user` |
-| Test | TC-CHECKOUT-011, `tests/bugs/test_checkout_bugs.py::test_checkout_fields_keep_what_you_type` |
+| Test | TC-CHECKOUT-011, `tests/ui/test_checkout.py::test_checkout_fields_keep_what_you_type` |
 
 **Steps**
 
@@ -239,7 +241,7 @@ ahead without a last name.
 |---|---|
 | Severity | High: this user can't complete any purchase |
 | User | `error_user` |
-| Test | TC-CHECKOUT-013, `tests/bugs/test_checkout_bugs.py::test_finish_completes_the_order` |
+| Test | TC-CHECKOUT-013, `tests/ui/test_checkout.py::test_finish_completes_the_order` |
 
 **Steps**
 

@@ -13,7 +13,7 @@ report appears on the run's summary page.
 Run by ID: `uv run pytest --tc TC-LOGIN-001` or `uv run pytest --tc TC-CART-001,TC-CART-002`.
 The HTML report also has a **Test ID** column.
 
-Known-bug cases (tag `bug`, tests in `tests/bugs/`) are listed in their feature's table.
+Known-bug cases (tag `bug`) live in their feature's test file and table.
 Each runs as `standard_user` first as a control (it must pass), then as the buggy user,
 where it's an expected failure linked to [BUGS.md](BUGS.md).
 

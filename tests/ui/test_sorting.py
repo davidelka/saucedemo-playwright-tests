@@ -3,6 +3,10 @@
 The expected order is computed from the products the page shows, not from a fixed
 catalog, so adding or repricing a product doesn't break these tests (the catalog
 itself is checked once, in test_inventory.py).
+
+Tests tagged ``bug`` also cover known bugs (see BUGS.md): they run as standard_user
+first, where they must pass (proving the test is right), then as each buggy user,
+where they're an expected failure.
 """
 
 from operator import attrgetter
@@ -10,6 +14,8 @@ from operator import attrgetter
 import pytest
 from playwright.sync_api import expect
 
+from framework.bugs import xfail_bug
+from framework.data.users import User
 from framework.pages.inventory_page import InventoryPage, Product, SortOption
 from framework.testcase import tc
 
@@ -67,3 +73,31 @@ def test_sort_orders_products(
     inventory_page.sort_by(option)
     expect(labels).to_have_text(expected)  # retries until the page shows this order
     assert sorted(inventory_page.products()) == sorted(shown), "sorting changed the products"
+
+
+@pytest.mark.bug
+@pytest.mark.parametrize(
+    "user",
+    [
+        pytest.param(User.STANDARD, marks=tc("TC-SORT-005")),
+        pytest.param(
+            User.PROBLEM,
+            marks=[tc("TC-SORT-006"), xfail_bug("BUG-003", "sorting has no effect")],
+        ),
+        pytest.param(
+            User.ERROR,
+            marks=[
+                tc("TC-SORT-007"),
+                xfail_bug("BUG-008", "sorting shows 'Sorting is broken!' and doesn't sort"),
+            ],
+        ),
+    ],
+)
+def test_sorting_works_without_errors(
+    inventory_page: InventoryPage, dialogs: list[str], user: User
+) -> None:
+    shown = inventory_page.products()
+    expected = [f"${p.price}" for p in sorted(shown, key=attrgetter("price"))]
+    inventory_page.sort_by(SortOption.PRICE_ASC)
+    expect(inventory_page.price_labels).to_have_text(expected)
+    assert dialogs == [], "the page showed an error alert"
