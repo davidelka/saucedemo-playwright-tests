@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from decimal import Decimal
 
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Locator, Page, expect
 
 from framework.components.header import Header
 from framework.components.product_item import item_named
@@ -20,6 +20,21 @@ class CartItem:
     quantity: int
 
 
+def read_cart_items(cart_list: Locator) -> list[CartItem]:
+    """The rows of a cart list (the cart page and the checkout overview share it)."""
+    # The URL changes before the page renders (single-page app), so wait for the
+    # list itself, not the URL.
+    expect(cart_list).to_be_visible()
+    return [
+        CartItem(
+            name=row.get_by_test_id("inventory-item-name").inner_text(),
+            price=parse_price(row.get_by_test_id("inventory-item-price").inner_text()),
+            quantity=int(row.get_by_test_id("item-quantity").inner_text()),
+        )
+        for row in cart_list.get_by_test_id("inventory-item").all()
+    ]
+
+
 class CartPage:
     PATH = "/cart.html"
     URL = re.compile(re.escape(PATH) + "$")
@@ -33,17 +48,7 @@ class CartPage:
         self.continue_shopping_button = page.get_by_test_id("continue-shopping")
 
     def items(self) -> list[CartItem]:
-        # The URL changes before the cart renders (single-page app), so wait for
-        # the cart itself, not the URL.
-        expect(self.cart_list).to_be_visible()
-        return [
-            CartItem(
-                name=row.get_by_test_id("inventory-item-name").inner_text(),
-                price=parse_price(row.get_by_test_id("inventory-item-price").inner_text()),
-                quantity=int(row.get_by_test_id("item-quantity").inner_text()),
-            )
-            for row in self.rows.all()
-        ]
+        return read_cart_items(self.cart_list)
 
     def remove(self, name: str) -> None:
         item_named(self.rows, name).get_by_role("button", name="Remove").click()

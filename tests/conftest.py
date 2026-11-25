@@ -16,6 +16,11 @@ import framework.auth
 from framework.config import Settings, get_settings
 from framework.data.users import DEFAULT_USER, User
 from framework.pages.cart_page import CartPage
+from framework.pages.checkout_pages import (
+    CheckoutCompletePage,
+    CheckoutInfoPage,
+    CheckoutOverviewPage,
+)
 from framework.pages.inventory_page import InventoryPage
 from framework.pages.login_page import LoginPage
 
@@ -111,3 +116,21 @@ def inventory_page(logged_in_page: Page) -> InventoryPage:
 def cart_page(logged_in_page: Page) -> CartPage:
     """The cart page object on the same logged-in page (open it via the header)."""
     return CartPage(logged_in_page)
+
+
+@pytest.fixture
+def checkout_info_page(logged_in_page: Page) -> CheckoutInfoPage:
+    """Checkout step one (your information), on the same logged-in page."""
+    return CheckoutInfoPage(logged_in_page)
+
+
+@pytest.fixture
+def checkout_overview_page(logged_in_page: Page) -> CheckoutOverviewPage:
+    """Checkout step two (overview and totals), on the same logged-in page."""
+    return CheckoutOverviewPage(logged_in_page)
+
+
+@pytest.fixture
+def checkout_complete_page(logged_in_page: Page) -> CheckoutCompletePage:
+    """The order confirmation page, on the same logged-in page."""
+    return CheckoutCompletePage(logged_in_page)

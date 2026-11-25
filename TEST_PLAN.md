@@ -79,6 +79,22 @@ Cases use the first products the page shows and expect the price the product lis
 | TC-CART-003 | Removing the last item in the cart hides the badge and empties the cart | P2 | cart, negative | Automated |
 | TC-CART-004 | Cart keeps its items after Continue Shopping and reopening it | P2 | cart, happy | Automated |
 
+## CHECKOUT: Checkout
+
+Totals cases use the first products the page shows, and compute the expected item total,
+8% tax (rounded to the cent, half up) and total from the prices the product list showed.
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-CHECKOUT-001 | One product: overview items, item total, tax, total correct; order completes, cart emptied | P1 | checkout, happy, smoke | Automated |
+| TC-CHECKOUT-002 | Three products: overview items, item total, tax, total correct; order completes | P1 | checkout, happy | Automated |
+| TC-CHECKOUT-003 | All products: overview items, item total, tax, total correct; order completes | P1 | checkout, happy | Automated |
+| TC-CHECKOUT-004 | Missing first name shows "Error: First Name is required", stays on step one | P2 | checkout, negative | Automated |
+| TC-CHECKOUT-005 | Missing last name shows "Error: Last Name is required", stays on step one | P2 | checkout, negative | Automated |
+| TC-CHECKOUT-006 | Missing postal code shows "Error: Postal Code is required", stays on step one | P2 | checkout, negative | Automated |
+| TC-CHECKOUT-007 | All fields empty shows the first-name error first, stays on step one | P3 | checkout, negative | Automated |
+| TC-CHECKOUT-008 | An empty cart can't be checked out (known bug BUG-001, expected failure) | P2 | checkout, negative, bug | Automated |
+
 ## CFG: Configuration
 
 | ID | Title | Priority | Tags | Status |
@@ -102,3 +118,9 @@ Cases use the first products the page shows and expect the price the product lis
 | TC-UNIT-010 | User tag (`user_problem`…) is added from the user a test runs as | P3 | unit | Automated |
 | TC-UNIT-011 | `--no-test-plan` runs the tests without reading the plan or writing the report | P3 | unit | Automated |
 | TC-UNIT-012 | A missing TEST_PLAN.md skips the report with a message and never fails the run | P3 | unit | Automated |
+| TC-UNIT-013 | `parse_price` reads prices from labels ("$7.99", "Item total: $29.99", "$0") | P2 | unit | Automated |
+| TC-UNIT-014 | `expected_tax` is 8% rounded to the cent, half a cent rounding up | P2 | unit | Automated |
+| TC-UNIT-015 | `parse_price` raises on text without a price instead of guessing | P3 | unit | Automated |
+| TC-UNIT-016 | `xfail_bug`: a wrong result is an expected failure, linked to BUGS.md | P2 | unit | Automated |
+| TC-UNIT-017 | `xfail_bug`: a broken test (other error) and a fixed bug (pass) both fail the run | P2 | unit | Automated |
+| TC-UNIT-018 | `xfail_bug` rejects a malformed bug ID | P3 | unit | Automated |
