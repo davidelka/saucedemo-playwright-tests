@@ -10,8 +10,7 @@ from operator import attrgetter
 import pytest
 from playwright.sync_api import expect
 
-from framework.data.products import SortOption
-from framework.pages.inventory_page import InventoryPage, Product
+from framework.pages.inventory_page import InventoryPage, Product, SortOption
 from framework.testcase import tc
 
 pytestmark = [pytest.mark.inventory, pytest.mark.regression]

@@ -3,13 +3,22 @@
 import re
 from dataclasses import dataclass
 from decimal import Decimal
+from enum import StrEnum
 
 from playwright.sync_api import Locator, Page
 
 from framework.components.header import Header
 from framework.components.product_item import item_named
-from framework.data.products import SortOption
 from framework.money import parse_price
+
+
+class SortOption(StrEnum):
+    """Option values of the ``product-sort-container`` dropdown."""
+
+    NAME_ASC = "az"
+    NAME_DESC = "za"
+    PRICE_ASC = "lohi"
+    PRICE_DESC = "hilo"
 
 
 @dataclass(frozen=True, order=True)
