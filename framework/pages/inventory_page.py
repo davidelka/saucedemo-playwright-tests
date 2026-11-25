@@ -1,6 +1,7 @@
 """The product list (``/inventory.html``)."""
 
 import re
+from dataclasses import dataclass
 from decimal import Decimal
 
 from playwright.sync_api import Locator, Page
@@ -9,6 +10,14 @@ from framework.components.header import Header
 from framework.components.product_item import item_named
 from framework.data.products import SortOption
 from framework.money import parse_price
+
+
+@dataclass(frozen=True, order=True)
+class Product:
+    """One product card, as shown on the page."""
+
+    name: str
+    price: Decimal
 
 
 class InventoryPage:
@@ -22,6 +31,9 @@ class InventoryPage:
         self.title = page.get_by_test_id("title")
         self.sort_select = page.get_by_test_id("product-sort-container")
         self.items = page.get_by_test_id("inventory-item")
+        # One label per card, in display order. Use with expect(...).to_have_text([...]).
+        self.name_labels = self.items.get_by_test_id("inventory-item-name")
+        self.price_labels = self.items.get_by_test_id("inventory-item-price")
 
     def open(self) -> None:
         self.page.goto(self.PATH)
@@ -29,14 +41,13 @@ class InventoryPage:
     def sort_by(self, option: SortOption) -> None:
         self.sort_select.select_option(option.value)
 
-    def product_names(self) -> list[str]:
-        self.items.first.wait_for()  # the list has rendered
-        return self.items.get_by_test_id("inventory-item-name").all_inner_texts()
-
-    def product_prices(self) -> list[Decimal]:
+    def products(self) -> list[Product]:
+        """Every product shown, in display order (a snapshot: it reads once, no retry)."""
+        # all_inner_texts() doesn't wait, so first wait for the list to render.
         self.items.first.wait_for()
-        texts = self.items.get_by_test_id("inventory-item-price").all_inner_texts()
-        return [parse_price(t) for t in texts]
+        names = self.name_labels.all_inner_texts()
+        prices = self.price_labels.all_inner_texts()
+        return [Product(n, parse_price(p)) for n, p in zip(names, prices, strict=True)]
 
     def product_images(self) -> list[str]:
         """The ``src`` of each product image, in display order."""

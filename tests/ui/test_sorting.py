@@ -1,17 +1,21 @@
-"""Product sorting: all four options of the sort dropdown."""
+"""Product sorting: all four options of the sort dropdown.
 
-from decimal import Decimal
+The expected order is computed from the products the page shows, not from a fixed
+catalog, so adding or repricing a product doesn't break these tests (the catalog
+itself is checked once, in test_inventory.py).
+"""
+
+from operator import attrgetter
 
 import pytest
+from playwright.sync_api import expect
 
-from framework.data.products import PRODUCTS, SortOption
-from framework.pages.inventory_page import InventoryPage
+from framework.data.products import SortOption
+from framework.pages.inventory_page import InventoryPage, Product
 from framework.testcase import tc
 
 pytestmark = [pytest.mark.inventory, pytest.mark.regression]
 
-# The page starts sorted A-Z, so each case first sorts the opposite way and checks
-# the list moved. Otherwise the A-Z case would pass even if sorting did nothing.
 OPPOSITE = {
     SortOption.NAME_ASC: SortOption.NAME_DESC,
     SortOption.NAME_DESC: SortOption.NAME_ASC,
@@ -20,9 +24,13 @@ OPPOSITE = {
 }
 
 
-def sort_key(page: InventoryPage, key: str) -> list[str] | list[Decimal]:
-    """What the list is sorted by: the product names or the prices."""
-    return page.product_names() if key == "name" else page.product_prices()
+def label_texts(products: list[Product], key: str) -> list[str]:
+    """The name or price labels the page shows for these products, in this order.
+
+    Price sorts compare prices, not names: two products can cost the same, and the
+    order between them isn't defined.
+    """
+    return [p.name for p in products] if key == "name" else [f"${p.price}" for p in products]
 
 
 @pytest.mark.happy
@@ -48,15 +56,15 @@ def sort_key(page: InventoryPage, key: str) -> list[str] | list[Decimal]:
 def test_sort_orders_products(
     inventory_page: InventoryPage, option: SortOption, key: str, reverse: bool
 ) -> None:
+    shown = inventory_page.products()
+    expected = label_texts(sorted(shown, key=attrgetter(key), reverse=reverse), key)
+    labels = inventory_page.name_labels if key == "name" else inventory_page.price_labels
+
+    # The page starts sorted A-Z, so sort the opposite way first and check the list
+    # moved. Otherwise the A-Z case would pass even if sorting did nothing.
     inventory_page.sort_by(OPPOSITE[option])
-    before = sort_key(inventory_page, key)
-    assert before != sorted(before, reverse=reverse), "precondition: list never left the order"
+    expect(labels, "precondition: the list never left the target order").not_to_have_text(expected)
 
     inventory_page.sort_by(option)
-    names = inventory_page.product_names()
-    prices = inventory_page.product_prices()
-    assert sorted(names) == sorted(PRODUCTS), "products missing or extra"
-    assert dict(zip(names, prices, strict=True)) == PRODUCTS, "a price doesn't match its name"
-    actual = sort_key(inventory_page, key)
-    assert actual == sorted(actual, reverse=reverse), f"not sorted by {option}"
-    assert actual != sorted(actual, reverse=not reverse), "order didn't change"
+    expect(labels).to_have_text(expected)  # retries until the page shows this order
+    assert sorted(inventory_page.products()) == sorted(shown), "sorting changed the products"
