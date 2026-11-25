@@ -1,6 +1,5 @@
 """The saved-session login (storage state) that every non-login test starts from."""
 
-import re
 from collections.abc import Callable
 from datetime import timedelta
 from pathlib import Path
@@ -28,7 +27,7 @@ pytestmark = [pytest.mark.login, pytest.mark.regression]
     ],
 )
 def test_saved_session_opens_inventory(logged_in_page: Page, user: User) -> None:
-    expect(logged_in_page).to_have_url(re.compile(r"/inventory\.html$"))
+    expect(logged_in_page).to_have_url(InventoryPage.URL)
     expect(InventoryPage(logged_in_page).title).to_have_text("Products")
 
 

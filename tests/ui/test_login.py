@@ -4,8 +4,6 @@ These tests log in through the UI on purpose. Every other test starts already
 logged in from a saved session (see the ``logged_in_page`` fixture).
 """
 
-import re
-
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -27,7 +25,7 @@ USE_REAL_PASSWORD = None  # sentinel: take the password from settings
 def test_login_success(login_page: LoginPage, settings: Settings, page: Page) -> None:
     login_page.open()
     login_page.login(User.STANDARD, settings.password.get_secret_value())
-    expect(page).to_have_url(re.compile(r"/inventory\.html$"))
+    expect(page).to_have_url(InventoryPage.URL)
     expect(InventoryPage(page).title).to_have_text("Products")
 
 
