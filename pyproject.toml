@@ -23,7 +23,9 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
-addopts = "--strict-markers"
+# Same defaults locally and in CI: on failure keep a Playwright trace and a screenshot
+# (in test-results/, and linked/embedded in the HTML report when --html is given).
+addopts = "--strict-markers --tracing=retain-on-failure --screenshot=only-on-failure --output=test-results"
 markers = [
     # Suite: how often it runs
     "smoke: fast critical-path checks, run on every PR",

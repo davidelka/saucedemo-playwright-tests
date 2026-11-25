@@ -207,3 +207,26 @@ def test_missing_plan_is_reported_not_fatal(project: pytest.Pytester) -> None:
     result.assert_outcomes(passed=1)
     assert not (project.path / REPORT).exists()
     result.stdout.fnmatch_lines(["*traceability report skipped: TEST_PLAN.md not found*"])
+
+
+@tc("TC-UNIT-019")
+def test_report_marks_pass_after_rerun_as_flaky(project: pytest.Pytester) -> None:
+    project.makepyfile(
+        test_x="""
+        from pathlib import Path
+        from framework.testcase import tc
+        @tc("TC-A-001")
+        def test_flaky():
+            attempted = Path("attempted")
+            if not attempted.exists():  # first attempt fails, the rerun passes
+                attempted.touch()
+                assert False
+        @tc("TC-A-002")
+        def test_stable(): pass
+        """
+    )
+    result, report = run_and_read(project, "--reruns", "1")
+    assert result.parseoutcomes() == {"passed": 2, "rerun": 1}
+    assert "passed on rerun" in row(report, "TC-A-001")
+    assert "passed on rerun" not in row(report, "TC-A-002")
+    assert "passed on rerun (flaky): 1" in report  # counted in the summary line

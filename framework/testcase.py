@@ -28,10 +28,12 @@ TEST_ID_PROPERTY = "test_id"
 
 # When one ID runs several times (once per browser, or per parametrized case),
 # the worst outcome wins. Earlier in this list = worse.
-OUTCOME_SEVERITY = ["failed", "error", "passed", "xfailed", "skipped"]
+# Worst first. "flaky" = passed, but only after pytest-rerunfailures retried it.
+OUTCOME_SEVERITY = ["failed", "error", "flaky", "passed", "xfailed", "skipped"]
 OUTCOME_LABEL = {
     "failed": "❌ FAILED",
     "error": "❌ ERROR",
+    "flaky": "🔁 passed on rerun (flaky)",
     "passed": "✅ passed",
     "xfailed": "🟡 expected failure (known bug)",
     "skipped": "⏭ skipped",
@@ -148,6 +150,7 @@ class TraceabilityReport:
         self.config = config
         self.outcomes: dict[str, list[str]] = {}
         self.test_ids: dict[str, str | None] = {}
+        self.rerun: set[str] = set()  # nodeids that needed a retry
         self.written: Path | None = None
         self.skipped: str | None = None
 
@@ -156,6 +159,8 @@ class TraceabilityReport:
         # workers; user_properties travel with them.
         test_id = dict(report.user_properties).get(TEST_ID_PROPERTY)
         self.test_ids.setdefault(report.nodeid, str(test_id) if test_id else None)
+        if report.outcome == "rerun":
+            self.rerun.add(report.nodeid)
         outcome = outcome_of(report)
         if outcome:
             self.outcomes.setdefault(report.nodeid, []).append(outcome)
@@ -171,7 +176,7 @@ class TraceabilityReport:
             self.skipped = f"{PLAN_FILE} not found (pass --no-test-plan to run without it)"
             return
         results = {
-            nodeid: (self.test_ids.get(nodeid), worst(outcomes))
+            nodeid: (self.test_ids.get(nodeid), self._final_outcome(nodeid, outcomes))
             for nodeid, outcomes in self.outcomes.items()
         }
         text = build_report(load_test_plan(plan_path), results)
@@ -182,6 +187,10 @@ class TraceabilityReport:
         if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
             with open(summary, "a", encoding="utf-8") as fh:
                 fh.write(text + "\n")
+
+    def _final_outcome(self, nodeid: str, outcomes: list[str]) -> str:
+        outcome = worst(outcomes)
+        return "flaky" if outcome == "passed" and nodeid in self.rerun else outcome
 
     def pytest_terminal_summary(self, terminalreporter: pytest.TerminalReporter) -> None:
         if self.written:

@@ -146,3 +146,4 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-UNIT-016 | `xfail_bug`: a wrong result is an expected failure, linked to BUGS.md | P2 | unit | Automated |
 | TC-UNIT-017 | `xfail_bug`: a broken test (other error) and a fixed bug (pass) both fail the run | P2 | unit | Automated |
 | TC-UNIT-018 | `xfail_bug` rejects a malformed bug ID | P3 | unit | Automated |
+| TC-UNIT-019 | Report marks a test that passed only after a rerun as flaky, and counts it | P2 | unit | Automated |

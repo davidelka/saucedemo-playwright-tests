@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # "Run workflow" button, on any branch
+
+# A newer push to the same branch cancels the run still in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint, types, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy framework tests
+      # Fast feedback before any browser is installed. The browser jobs run these again
+      # (about 2 seconds) so their traceability report covers the whole plan.
+      - name: Unit tests (no browser)
+        run: uv run pytest -m unit --no-test-plan -q
+
+  test:
+    name: Tests (${{ matrix.browser }})
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false # one browser failing doesn't cancel the other
+      matrix:
+        browser: [chromium, firefox]
+    env:
+      SAUCE_PASSWORD: ${{ vars.SAUCE_PASSWORD }} # repository variable, not in the code
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('uv.lock') }}
+      - name: Install ${{ matrix.browser }} and its system libraries
+        run: uv run playwright install --with-deps ${{ matrix.browser }}
+      # Tracing and screenshots on failure come from pyproject.toml (addopts).
+      # The traceability report is also written to this job's summary page.
+      - name: Run tests
+        run: >-
+          uv run pytest -m "not visual" -n auto --browser ${{ matrix.browser }}
+          --reruns 1
+          --html reports/report-${{ matrix.browser }}.html --self-contained-html
+      - name: Upload HTML report and traceability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: report-${{ matrix.browser }}
+          path: reports/
+          retention-days: 14
+      - name: Upload traces and screenshots of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
