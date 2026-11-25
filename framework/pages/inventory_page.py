@@ -71,3 +71,7 @@ class InventoryPage:
 
     def remove_from_cart(self, name: str) -> None:
         self.item(name).get_by_role("button", name="Remove").click()
+
+    def open_product(self, name: str) -> None:
+        """Click the product's name to open its details page."""
+        self.item(name).get_by_test_id("inventory-item-name").click()

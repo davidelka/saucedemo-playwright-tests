@@ -13,6 +13,10 @@ report appears on the run's summary page.
 Run by ID: `uv run pytest --tc TC-LOGIN-001` or `uv run pytest --tc TC-CART-001,TC-CART-002`.
 The HTML report also has a **Test ID** column.
 
+Known-bug cases (tag `bug`, tests in `tests/bugs/`) are listed in their feature's table.
+Each runs as `standard_user` first as a control (it must pass), then as the buggy user,
+where it's an expected failure linked to [BUGS.md](BUGS.md).
+
 To run without this file, pass `--no-test-plan`: it is never read and no
 traceability report is written. If the file is missing without the flag, the run
 still completes and the terminal says the report was skipped.
@@ -54,6 +58,10 @@ cases read the products from the page, so a new or repriced product fails only T
 | ID | Title | Priority | Tags | Status |
 |----|-------|----------|------|--------|
 | TC-INV-001 | Product list matches the expected catalog (names and prices, no duplicates) | P2 | inventory, happy | Automated |
+| TC-INV-002 | Each product has its own image (standard_user, control for TC-INV-003) | P2 | inventory, bug, user_standard | Automated |
+| TC-INV-003 | Each product has its own image, problem_user (known bug BUG-002) | P2 | inventory, bug, user_problem | Automated |
+| TC-INV-004 | Each product's link opens that product (standard_user, control for TC-INV-005) | P1 | inventory, bug, user_standard | Automated |
+| TC-INV-005 | Each product's link opens that product, problem_user (known bug BUG-004) | P1 | inventory, bug, user_problem | Automated |
 
 ## SORT: Product sorting
 
@@ -67,6 +75,9 @@ the opposite way and checks the list moved, so a sort that does nothing fails ev
 | TC-SORT-002 | Name (Z to A): names in Z-A order, same products and prices as before sorting | P2 | inventory, happy | Automated |
 | TC-SORT-003 | Price (low to high): ascending prices, same products and prices as before sorting | P2 | inventory, happy | Automated |
 | TC-SORT-004 | Price (high to low): descending prices, same products and prices as before sorting | P2 | inventory, happy | Automated |
+| TC-SORT-005 | Price sort works with no error alert (standard_user, control for TC-SORT-006/007) | P2 | inventory, bug, user_standard | Automated |
+| TC-SORT-006 | Price sort works with no error alert, problem_user (known bug BUG-003) | P2 | inventory, bug, user_problem | Automated |
+| TC-SORT-007 | Price sort works with no error alert, error_user (known bug BUG-008) | P2 | inventory, bug, user_error | Automated |
 
 ## CART: Cart
 
@@ -78,6 +89,12 @@ Cases use the first products the page shows and expect the price the product lis
 | TC-CART-002 | Removing a product from the product list lowers the badge | P2 | cart, happy | Automated |
 | TC-CART-003 | Removing the last item in the cart hides the badge and empties the cart | P2 | cart, negative | Automated |
 | TC-CART-004 | Cart keeps its items after Continue Shopping and reopening it | P2 | cart, happy | Automated |
+| TC-CART-005 | Every product can be added: badge and cart show them all (standard_user, control) | P1 | cart, bug, user_standard | Automated |
+| TC-CART-006 | Every product can be added, problem_user (known bug BUG-005) | P1 | cart, bug, user_problem | Automated |
+| TC-CART-007 | Every product can be added, error_user (known bug BUG-005) | P1 | cart, bug, user_error | Automated |
+| TC-CART-008 | A product can be removed from the product list (standard_user, control) | P2 | cart, bug, user_standard | Automated |
+| TC-CART-009 | A product can be removed from the product list, problem_user (known bug BUG-006) | P2 | cart, bug, user_problem | Automated |
+| TC-CART-010 | A product can be removed from the product list, error_user (known bug BUG-006) | P2 | cart, bug, user_error | Automated |
 
 ## CHECKOUT: Checkout
 
@@ -94,6 +111,11 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-CHECKOUT-006 | Missing postal code shows "Error: Postal Code is required", stays on step one | P2 | checkout, negative | Automated |
 | TC-CHECKOUT-007 | All fields empty shows the first-name error first, stays on step one | P3 | checkout, negative | Automated |
 | TC-CHECKOUT-008 | An empty cart can't be checked out (known bug BUG-001, expected failure) | P2 | checkout, negative, bug | Automated |
+| TC-CHECKOUT-009 | Checkout fields keep what you type (standard_user, control for TC-CHECKOUT-010/011) | P1 | checkout, bug, user_standard | Automated |
+| TC-CHECKOUT-010 | Checkout fields keep what you type, problem_user (known bug BUG-007) | P1 | checkout, bug, user_problem | Automated |
+| TC-CHECKOUT-011 | Checkout fields keep what you type, error_user (known bug BUG-009) | P2 | checkout, bug, user_error | Automated |
+| TC-CHECKOUT-012 | Finish completes the order (standard_user, control for TC-CHECKOUT-013) | P1 | checkout, bug, user_standard | Automated |
+| TC-CHECKOUT-013 | Finish completes the order, error_user (known bug BUG-010) | P1 | checkout, bug, user_error | Automated |
 
 ## CFG: Configuration
 

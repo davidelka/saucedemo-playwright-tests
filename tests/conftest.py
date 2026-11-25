@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from playwright.sync_api import Browser, BrowserContext, Page, Playwright
+from playwright.sync_api import Browser, BrowserContext, Dialog, Page, Playwright
 
 import framework.auth
 from framework.config import Settings, get_settings
@@ -23,6 +23,7 @@ from framework.pages.checkout_pages import (
 )
 from framework.pages.inventory_page import InventoryPage
 from framework.pages.login_page import LoginPage
+from framework.pages.product_page import ProductPage
 
 pytest_plugins = ["pytester", "framework.testcase", "framework.tagging"]
 
@@ -97,6 +98,19 @@ def logged_in_page(
     return page
 
 
+@pytest.fixture
+def dialogs(logged_in_page: Page) -> list[str]:
+    """Messages of every alert/confirm the page opens during the test (each is dismissed)."""
+    messages: list[str] = []
+
+    def record(dialog: Dialog) -> None:
+        messages.append(dialog.message)
+        dialog.dismiss()
+
+    logged_in_page.on("dialog", record)
+    return messages
+
+
 # --- page objects ----------------------------------------------------------
 
 
@@ -134,3 +148,9 @@ def checkout_overview_page(logged_in_page: Page) -> CheckoutOverviewPage:
 def checkout_complete_page(logged_in_page: Page) -> CheckoutCompletePage:
     """The order confirmation page, on the same logged-in page."""
     return CheckoutCompletePage(logged_in_page)
+
+
+@pytest.fixture
+def product_page(logged_in_page: Page) -> ProductPage:
+    """A product's details page object, on the same logged-in page."""
+    return ProductPage(logged_in_page)

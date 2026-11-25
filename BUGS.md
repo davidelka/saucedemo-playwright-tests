@@ -1,6 +1,10 @@
 # Bugs
 
-Every bug here has an automated test marked with `xfail_bug(...)` (see `framework/bugs.py`):
+Found on https://www.saucedemo.com on 2026-11-26 (Playwright 1.65.2, Chromium and Firefox).
+`problem_user` and `error_user` were compared action by action against `standard_user`;
+only differences that reproduce are listed.
+
+Every bug has an automated test marked with `xfail_bug(...)` (see `framework/bugs.py`):
 
 - Today the test **fails as expected**, reported as `xfailed` (🟡 "expected failure (known bug)"
   in `reports/traceability.md`), so the run stays green.
@@ -8,6 +12,8 @@ Every bug here has an automated test marked with `xfail_bug(...)` (see `framewor
   (a timeout, a missing element), the run fails.
 - The day the bug is fixed, the test passes and the run **fails** with `XPASS(strict)`.
   That's the signal to remove the marker and close the bug.
+- Tests that run as several users also run as `standard_user`, where they must pass: that
+  proves the test checks the right thing.
 
 Run only the bug tests:
 
@@ -16,8 +22,23 @@ uv run pytest -m bug -rx
 ```
 
 **Severity:** Critical = login or purchase impossible for everyone · High = a core flow is
-broken or gives wrong money values · Medium = wrong behavior with a workaround, or bad data
-· Low = cosmetic.
+broken (a user can't buy, or may buy the wrong thing) or money values are wrong · Medium =
+wrong behavior with a workaround, or bad data · Low = cosmetic.
+
+## Summary
+
+| Bug | Title | User | Severity | Test |
+|-----|-------|------|----------|------|
+| [BUG-001](#bug-001) | Checkout is allowed with an empty cart | standard_user | Medium | TC-CHECKOUT-008 |
+| [BUG-002](#bug-002) | All products show the same image | problem_user | Medium | TC-INV-003 |
+| [BUG-003](#bug-003) | Sorting has no effect | problem_user | Medium | TC-SORT-006 |
+| [BUG-004](#bug-004) | Product links open the wrong product | problem_user | High | TC-INV-005 |
+| [BUG-005](#bug-005) | Add to cart does nothing for 3 of 6 products | problem_user, error_user | High | TC-CART-006, TC-CART-007 |
+| [BUG-006](#bug-006) | Remove on the product list does nothing | problem_user, error_user | Medium | TC-CART-009, TC-CART-010 |
+| [BUG-007](#bug-007) | Typing the last name overwrites the first name | problem_user | High | TC-CHECKOUT-010 |
+| [BUG-008](#bug-008) | Sorting shows "Sorting is broken!" and doesn't sort | error_user | Medium | TC-SORT-007 |
+| [BUG-009](#bug-009) | Last Name ignores typing, checkout continues without it | error_user | Medium | TC-CHECKOUT-011 |
+| [BUG-010](#bug-010) | Finish doesn't complete the order | error_user | High | TC-CHECKOUT-013 |
 
 ## BUG-001
 
@@ -27,8 +48,8 @@ broken or gives wrong money values · Medium = wrong behavior with a workaround,
 |---|---|
 | Severity | Medium: creates orders with no items (bad data), no money is lost |
 | User | `standard_user` (other users not checked) |
-| Test | TC-CHECKOUT-008, `tests/ui/test_checkout.py::test_empty_cart_cannot_be_checked_out` |
-| Found | Manually (David), then confirmed with a script on 2026-11-26 |
+| Test | TC-CHECKOUT-008, `tests/bugs/test_checkout_bugs.py::test_empty_cart_cannot_be_checked_out` |
+| Found | Manually (David), then confirmed with a script |
 
 **Steps**
 
@@ -43,3 +64,188 @@ clicking it keeps you on the cart page with a message.
 **Actual:** Step 2 opens "Checkout: Your Information". Step 3 shows an overview with
 `Item total: $0`, `Tax: $0.00`, `Total: $0.00` (the item total is also formatted
 differently from other prices). Step 4 shows "Thank you for your order!".
+
+## BUG-002
+
+**All products show the same image**
+
+| | |
+|---|---|
+| Severity | Medium: customers can't see what they're buying; nothing is blocked |
+| User | `problem_user` |
+| Test | TC-INV-003, `tests/bugs/test_inventory_bugs.py::test_each_product_has_its_own_image` |
+
+**Steps**
+
+1. Log in as `problem_user`.
+2. Look at the product list.
+
+**Expected:** Each product shows its own photo, as for `standard_user`.
+
+**Actual:** All six products show the same placeholder image (`sl-404-….jpg`).
+
+## BUG-003
+
+**Sorting has no effect**
+
+| | |
+|---|---|
+| Severity | Medium: a listed feature doesn't work; you can still browse all products |
+| User | `problem_user` |
+| Test | TC-SORT-006, `tests/bugs/test_inventory_bugs.py::test_sorting_works_without_errors` |
+
+**Steps**
+
+1. Log in as `problem_user`.
+2. Choose "Name (Z to A)", "Price (low to high)" or "Price (high to low)" in the sort menu.
+
+**Expected:** The list is re-ordered, as for `standard_user`.
+
+**Actual:** The list stays in the default A-Z order. No message is shown.
+
+## BUG-004
+
+**Product links open the wrong product**
+
+| | |
+|---|---|
+| Severity | High: a customer may add the wrong item; one product's page can't be opened at all |
+| User | `problem_user` |
+| Test | TC-INV-005, `tests/bugs/test_inventory_bugs.py::test_product_link_opens_that_product` |
+
+**Steps**
+
+1. Log in as `problem_user`.
+2. Click a product's name in the product list.
+
+**Expected:** That product's details page opens.
+
+**Actual:** A different product opens: Backpack → Fleece Jacket, Bike Light → Bolt T-Shirt,
+Bolt T-Shirt → Onesie, Onesie → Test.allTheThings() T-Shirt (Red), Test.allTheThings()
+T-Shirt (Red) → Backpack. Fleece Jacket opens a page saying "ITEM NOT FOUND".
+
+## BUG-005
+
+**Add to cart does nothing for 3 of 6 products**
+
+| | |
+|---|---|
+| Severity | High: half the catalog can't be bought |
+| User | `problem_user`, `error_user` |
+| Test | TC-CART-006, TC-CART-007, `tests/bugs/test_cart_bugs.py::test_every_product_can_be_added` |
+
+**Steps**
+
+1. Log in as `problem_user` or `error_user`.
+2. Click **Add to cart** on Sauce Labs Bolt T-Shirt, Sauce Labs Fleece Jacket or
+   Test.allTheThings() T-Shirt (Red).
+
+**Expected:** The button changes to **Remove**, the cart badge counts up, and the product
+is in the cart.
+
+**Actual:** The button stays **Add to cart**, the badge doesn't change, and the product
+isn't in the cart. Backpack, Bike Light and Onesie can be added.
+
+## BUG-006
+
+**Remove on the product list does nothing**
+
+| | |
+|---|---|
+| Severity | Medium: workaround exists (Remove on the cart page works) |
+| User | `problem_user`, `error_user` |
+| Test | TC-CART-009, TC-CART-010, `tests/bugs/test_cart_bugs.py::test_product_can_be_removed_from_the_list` |
+
+**Steps**
+
+1. Log in as `problem_user` or `error_user`.
+2. Click **Add to cart** on Sauce Labs Backpack. The badge shows 1.
+3. Click **Remove** on the same product in the product list.
+
+**Expected:** The button changes back to **Add to cart** and the badge disappears.
+
+**Actual:** The button stays **Remove** and the badge stays at 1 (seen for every product
+that can be added: Backpack, Bike Light, Onesie). Removing it on the cart page works.
+
+## BUG-007
+
+**Typing the last name overwrites the first name, so checkout can't continue**
+
+| | |
+|---|---|
+| Severity | High: this user can't complete any purchase |
+| User | `problem_user` |
+| Test | TC-CHECKOUT-010, `tests/bugs/test_checkout_bugs.py::test_checkout_fields_keep_what_you_type` |
+
+**Steps**
+
+1. Log in as `problem_user`, add Sauce Labs Backpack, open the cart, click **Checkout**.
+2. Enter First Name `John`, Last Name `Doe`, Postal Code `12345`.
+3. Click **Continue**.
+
+**Expected:** The fields show John / Doe / 12345 and the overview opens.
+
+**Actual:** After step 2, First Name shows `Doe` and Last Name is empty. Step 3 shows
+"Error: Last Name is required", whatever you enter.
+
+## BUG-008
+
+**Sorting shows "Sorting is broken!" and doesn't sort**
+
+| | |
+|---|---|
+| Severity | Medium: a listed feature doesn't work and shows an error; browsing still works |
+| User | `error_user` |
+| Test | TC-SORT-007, `tests/bugs/test_inventory_bugs.py::test_sorting_works_without_errors` |
+
+**Steps**
+
+1. Log in as `error_user`.
+2. Choose any option in the sort menu.
+
+**Expected:** The list is re-ordered, with no error.
+
+**Actual:** An alert says "Sorting is broken! This error has been reported to Backtrace."
+and the list stays in the default order. The browser console logs
+"Error: This component failed to render!".
+
+## BUG-009
+
+**Last Name ignores typing, and checkout continues without a last name**
+
+| | |
+|---|---|
+| Severity | Medium: orders are placed without a last name (bad data); required-field check bypassed |
+| User | `error_user` |
+| Test | TC-CHECKOUT-011, `tests/bugs/test_checkout_bugs.py::test_checkout_fields_keep_what_you_type` |
+
+**Steps**
+
+1. Log in as `error_user`, add Sauce Labs Backpack, open the cart, click **Checkout**.
+2. Enter First Name `John`, Last Name `Doe`, Postal Code `12345`.
+3. Click **Continue**.
+
+**Expected:** Last Name shows `Doe`. (With an empty Last Name, `standard_user` gets
+"Error: Last Name is required".)
+
+**Actual:** Last Name stays empty, yet **Continue** opens the overview, so the order goes
+ahead without a last name.
+
+## BUG-010
+
+**Finish doesn't complete the order**
+
+| | |
+|---|---|
+| Severity | High: this user can't complete any purchase |
+| User | `error_user` |
+| Test | TC-CHECKOUT-013, `tests/bugs/test_checkout_bugs.py::test_finish_completes_the_order` |
+
+**Steps**
+
+1. Log in as `error_user`, add Sauce Labs Backpack, open the cart, click **Checkout**.
+2. Fill in the form, click **Continue**, then click **Finish**.
+
+**Expected:** "Thank you for your order!" is shown.
+
+**Actual:** Nothing happens: the page stays on "Checkout: Overview".

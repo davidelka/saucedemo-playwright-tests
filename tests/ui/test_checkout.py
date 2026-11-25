@@ -1,4 +1,4 @@
-"""Checkout: totals (item total, tax, total), required fields, and the empty-cart bug.
+"""Checkout: totals (item total, tax, total) and required fields.
 
 Products are the first ones the page shows, and expected totals are computed from the
 prices the product list showed, so a catalog change doesn't break these tests.
@@ -10,8 +10,8 @@ from decimal import Decimal
 import pytest
 from playwright.sync_api import expect
 
-from framework.bugs import xfail_bug
 from framework.data.customer import CUSTOMER, Customer
+from framework.flows import start_checkout
 from framework.money import expected_tax
 from framework.pages.cart_page import CartItem, CartPage
 from framework.pages.checkout_pages import (
@@ -19,22 +19,12 @@ from framework.pages.checkout_pages import (
     CheckoutInfoPage,
     CheckoutOverviewPage,
 )
-from framework.pages.inventory_page import InventoryPage, Product
+from framework.pages.inventory_page import InventoryPage
 from framework.testcase import tc
 
 pytestmark = [pytest.mark.checkout, pytest.mark.regression]
 
 ALL_PRODUCTS = None  # slice end: [:None] takes every product
-
-
-def start_checkout(
-    inventory_page: InventoryPage, cart_page: CartPage, products: list[Product]
-) -> None:
-    """Add the products, open the cart and click Checkout."""
-    for product in products:
-        inventory_page.add_to_cart(product.name)
-    inventory_page.header.open_cart()
-    cart_page.checkout()
 
 
 @pytest.mark.happy
@@ -117,18 +107,3 @@ def test_checkout_validation(
     checkout_info_page.continue_()
     expect(checkout_info_page.error).to_have_text(message)
     expect(checkout_info_page.page).to_have_url(CheckoutInfoPage.URL)  # didn't move on
-
-
-@tc("TC-CHECKOUT-008")
-@pytest.mark.negative
-@pytest.mark.bug
-@xfail_bug("BUG-001", "checkout is allowed with an empty cart")
-def test_empty_cart_cannot_be_checked_out(
-    inventory_page: InventoryPage, cart_page: CartPage
-) -> None:
-    inventory_page.header.open_cart()
-    assert cart_page.items() == [], "precondition: the cart starts empty"
-    # Either fix is fine: Checkout disabled, or clicking it keeps you on the cart.
-    if cart_page.checkout_button.is_enabled():
-        cart_page.checkout()
-    expect(cart_page.page).to_have_url(CartPage.URL)
