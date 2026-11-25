@@ -46,6 +46,27 @@ P3 = minor or cosmetic.
 | TC-AUTH-005 | visual_user's saved session opens Products | P2 | login, happy | Automated |
 | TC-AUTH-006 | A saved session older than the max age is re-created | P2 | login | Automated |
 
+## SORT: Product sorting
+
+Each case first sorts the opposite way and checks the list moved, so a sort that does
+nothing fails every case (the page starts A-Z).
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-SORT-001 | Name (A to Z): all products, names in A-Z order, prices match names | P2 | inventory, happy, smoke | Automated |
+| TC-SORT-002 | Name (Z to A): all products, names in Z-A order, prices match names | P2 | inventory, happy | Automated |
+| TC-SORT-003 | Price (low to high): all products, ascending prices, prices match names | P2 | inventory, happy | Automated |
+| TC-SORT-004 | Price (high to low): all products, descending prices, prices match names | P2 | inventory, happy | Automated |
+
+## CART: Cart
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-CART-001 | Adding 2 products shows badge "2" and both in the cart with name, price, quantity 1 | P1 | cart, happy, smoke | Automated |
+| TC-CART-002 | Removing a product from the product list lowers the badge | P2 | cart, happy | Automated |
+| TC-CART-003 | Removing the last item in the cart hides the badge and empties the cart | P2 | cart, negative | Automated |
+| TC-CART-004 | Cart keeps its items after Continue Shopping and reopening it | P2 | cart, happy | Automated |
+
 ## CFG: Configuration
 
 | ID | Title | Priority | Tags | Status |

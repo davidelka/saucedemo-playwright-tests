@@ -15,6 +15,7 @@ from playwright.sync_api import Browser, BrowserContext, Page, Playwright
 import framework.auth
 from framework.config import Settings, get_settings
 from framework.data.users import DEFAULT_USER, User
+from framework.pages.cart_page import CartPage
 from framework.pages.inventory_page import InventoryPage
 from framework.pages.login_page import LoginPage
 
@@ -98,3 +99,15 @@ def logged_in_page(
 def login_page(page: Page) -> LoginPage:
     """The login page in a fresh, logged-out context."""
     return LoginPage(page)
+
+
+@pytest.fixture
+def inventory_page(logged_in_page: Page) -> InventoryPage:
+    """The product list, logged in as ``user``."""
+    return InventoryPage(logged_in_page)
+
+
+@pytest.fixture
+def cart_page(logged_in_page: Page) -> CartPage:
+    """The cart page object on the same logged-in page (open it via the header)."""
+    return CartPage(logged_in_page)
