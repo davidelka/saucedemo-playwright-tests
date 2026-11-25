@@ -19,75 +19,70 @@ NO_MATCH = "Epic sadface: Username and password do not match any user in this se
 USE_REAL_PASSWORD = None  # sentinel: take the password from settings
 
 
+@tc("TC-LOGIN-001")
+@pytest.mark.smoke
 @pytest.mark.happy
-class TestLoginSuccess:
-    """Valid credentials open the product list."""
-
-    @tc("TC-LOGIN-001")
-    @pytest.mark.smoke
-    def test_login_success(self, login_page: LoginPage, settings: Settings, page: Page) -> None:
-        login_page.open()
-        login_page.login(User.STANDARD, settings.password.get_secret_value())
-        expect(page).to_have_url(InventoryPage.URL)
-        expect(InventoryPage(page).title).to_have_text("Products")
+def test_login_success(login_page: LoginPage, settings: Settings, page: Page) -> None:
+    login_page.open()
+    login_page.login(User.STANDARD, settings.password.get_secret_value())
+    expect(page).to_have_url(InventoryPage.URL)
+    expect(InventoryPage(page).title).to_have_text("Products")
 
 
 @pytest.mark.negative
-class TestLoginFailure:
-    """Bad or missing credentials show the exact error and stay on the login page."""
-
-    @pytest.mark.parametrize(
-        ("username", "password", "message"),
-        [
-            pytest.param(
-                User.STANDARD, "wrong", NO_MATCH, id="invalid-password", marks=tc("TC-LOGIN-002")
-            ),
-            pytest.param(
-                "nobody", USE_REAL_PASSWORD, NO_MATCH, id="unknown-user", marks=tc("TC-LOGIN-003")
-            ),
-            pytest.param(
-                User.LOCKED_OUT,
-                USE_REAL_PASSWORD,
-                "Epic sadface: Sorry, this user has been locked out.",
-                id="locked-out",
-                marks=tc("TC-LOGIN-004"),
-            ),
-            pytest.param(
-                "",
-                USE_REAL_PASSWORD,
-                "Epic sadface: Username is required",
-                id="empty-username",
-                marks=tc("TC-LOGIN-005"),
-            ),
-            pytest.param(
-                User.STANDARD,
-                "",
-                "Epic sadface: Password is required",
-                id="empty-password",
-                marks=tc("TC-LOGIN-006"),
-            ),
-        ],
+@pytest.mark.parametrize(
+    ("username", "password", "message"),
+    [
+        pytest.param(
+            User.STANDARD, "wrong", NO_MATCH, id="invalid-password", marks=tc("TC-LOGIN-002")
+        ),
+        pytest.param(
+            "nobody", USE_REAL_PASSWORD, NO_MATCH, id="unknown-user", marks=tc("TC-LOGIN-003")
+        ),
+        pytest.param(
+            User.LOCKED_OUT,
+            USE_REAL_PASSWORD,
+            "Epic sadface: Sorry, this user has been locked out.",
+            id="locked-out",
+            marks=tc("TC-LOGIN-004"),
+        ),
+        pytest.param(
+            "",
+            USE_REAL_PASSWORD,
+            "Epic sadface: Username is required",
+            id="empty-username",
+            marks=tc("TC-LOGIN-005"),
+        ),
+        pytest.param(
+            User.STANDARD,
+            "",
+            "Epic sadface: Password is required",
+            id="empty-password",
+            marks=tc("TC-LOGIN-006"),
+        ),
+    ],
+)
+def test_login_failure(
+    login_page: LoginPage,
+    settings: Settings,
+    page: Page,
+    username: str,
+    password: str | None,
+    message: str,
+) -> None:
+    login_page.open()
+    login_page.login(
+        username, settings.password.get_secret_value() if password is None else password
     )
-    def test_login_failure(
-        self,
-        login_page: LoginPage,
-        settings: Settings,
-        page: Page,
-        username: str,
-        password: str | None,
-        message: str,
-    ) -> None:
-        login_page.open()
-        login_page.login(
-            username, settings.password.get_secret_value() if password is None else password
-        )
-        expect(login_page.error).to_have_text(message)
-        expect(page).to_have_url(settings.base_url + "/")  # still on the login page
+    expect(login_page.error).to_have_text(message)
+    expect(page).to_have_url(settings.base_url + "/")  # still on the login page
 
-    @tc("TC-LOGIN-007")
-    def test_inventory_requires_login(self, page: Page) -> None:
-        page.goto(InventoryPage.PATH)
-        expect(LoginPage(page).error).to_have_text(
-            "Epic sadface: You can only access '/inventory.html' when you are logged in."
-        )
-        expect(LoginPage(page).login_button).to_be_visible()
+
+@tc("TC-LOGIN-007")
+@pytest.mark.negative
+def test_inventory_requires_login(page: Page) -> None:
+    page.goto(InventoryPage.PATH)
+    expect(LoginPage(page).error).to_have_text(
+        "Epic sadface: You can only access '/inventory.html' when you are logged in."
+    )
+    expect(LoginPage(page).login_button).to_be_visible()
