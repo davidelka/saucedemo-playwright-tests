@@ -19,6 +19,29 @@ see the notes · `Not automated` = deliberately left out, see STRATEGY.md.
 **Priority:** P1 = blocks a purchase or login · P2 = core function degraded ·
 P3 = minor or cosmetic.
 
+## LOGIN: Login form
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-LOGIN-001 | Valid credentials open the Products page | P1 | login, smoke, happy | Automated |
+| TC-LOGIN-002 | Wrong password shows "Username and password do not match…" | P1 | login, negative | Automated |
+| TC-LOGIN-003 | Unknown username shows "Username and password do not match…" | P2 | login, negative | Automated |
+| TC-LOGIN-004 | Locked-out user sees "Sorry, this user has been locked out." | P1 | login, negative | Automated |
+| TC-LOGIN-005 | Empty username shows "Username is required" | P2 | login, negative | Automated |
+| TC-LOGIN-006 | Empty password shows "Password is required" | P2 | login, negative | Automated |
+| TC-LOGIN-007 | Opening /inventory.html without logging in shows the login form with an error | P1 | login, negative | Automated |
+
+## AUTH: Saved session (storage state)
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-AUTH-001 | standard_user's saved session opens Products without the login form | P1 | login, smoke, happy | Automated |
+| TC-AUTH-002 | problem_user's saved session opens Products | P2 | login, happy | Automated |
+| TC-AUTH-003 | performance_glitch_user's saved session opens Products (slow login tolerated) | P2 | login, happy | Automated |
+| TC-AUTH-004 | error_user's saved session opens Products | P2 | login, happy | Automated |
+| TC-AUTH-005 | visual_user's saved session opens Products | P2 | login, happy | Automated |
+| TC-AUTH-006 | A saved session older than the max age is re-created | P2 | login | Automated |
+
 ## CFG: Configuration
 
 | ID | Title | Priority | Tags | Status |

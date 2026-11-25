@@ -28,6 +28,9 @@ REPORT = "trace.md"
 def project(pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch) -> pytest.Pytester:
     # The inner run must not append to the real CI job summary.
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    # The inner runs share this process; pytest-playwright there would clash with
+    # the outer session's ("nested soft assertion scopes"), and they need no browser.
+    pytester.makeini("[pytest]\naddopts = -p no:playwright")
     pytester.makefile(".md", TEST_PLAN=PLAN)
     pytester.makeconftest('pytest_plugins = ["framework.testcase"]')
     return pytester

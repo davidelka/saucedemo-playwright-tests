@@ -12,6 +12,9 @@ PLAN = "| ID | Title | Priority | Tags | Status |\n|--|--|--|--|--|\n"
 @pytest.fixture
 def project(pytester: pytest.Pytester, monkeypatch: pytest.MonkeyPatch) -> pytest.Pytester:
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
+    # The inner runs share this process; pytest-playwright there would clash with
+    # the outer session's ("nested soft assertion scopes"), and they need no browser.
+    pytester.makeini("[pytest]\naddopts = -p no:playwright")
     pytester.makefile(".md", TEST_PLAN=PLAN)
     pytester.makeconftest(
         """
