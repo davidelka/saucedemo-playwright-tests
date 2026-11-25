@@ -2,16 +2,19 @@ import pytest
 from pydantic import ValidationError
 
 from framework.config import Settings
+from framework.testcase import tc
 
 pytestmark = pytest.mark.unit
 
 
+@tc("TC-CFG-001")
 def test_settings_require_password(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SAUCE_PASSWORD", raising=False)
     with pytest.raises(ValidationError, match="password"):
         Settings(_env_file=None)  # type: ignore[call-arg]
 
 
+@tc("TC-CFG-002")
 def test_settings_read_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("SAUCE_PASSWORD", "x")
     monkeypatch.setenv("SAUCE_BASE_URL", "https://example.test")

@@ -30,7 +30,6 @@ markers = [
     "bug: exposes a known bug (expected failure, see BUGS.md)",
     "unit: framework unit tests, no browser",
     "visual: screenshot comparison tests (run in Docker)",
-    "tc(id): test-case ID from TEST_PLAN.md",
 ]
 
 [tool.ruff]
