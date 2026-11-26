@@ -92,6 +92,48 @@ uv run ruff format --check .
 uv run mypy framework tests
 ```
 
+## Run in Docker
+
+The same suite without installing Python, uv or browsers: only Docker. The image is the
+official Playwright image for the Playwright version in `uv.lock` (Chromium, Firefox and
+WebKit included), with the locked dependencies installed.
+
+```bash
+docker compose build
+```
+
+```bash
+mkdir -p reports test-results
+```
+
+```bash
+docker compose run --rm tests
+```
+
+That runs the whole suite in Chromium with `-n auto`. Anything after `tests` goes to
+pytest:
+
+| To run | Command |
+|---|---|
+| Smoke tests | `docker compose run --rm tests -m smoke` |
+| All three browsers | `docker compose run --rm tests --browser chromium --browser firefox --browser webkit` |
+| One test case | `docker compose run --rm tests --tc TC-CHECKOUT-001` |
+| On one worker | `docker compose run --rm tests -n 0` |
+
+- **The password** comes from `.env` or your shell, never from the image. Without it,
+  Compose stops before starting: "set SAUCE_PASSWORD in .env or your shell".
+- **Reports and traces** land in `reports/` and `test-results/` on your machine. The
+  container runs as user 1000, so the files are yours. Create the two folders first: if
+  Docker has to create them, they belong to root and the container can't write to them.
+  If your user ID isn't 1000: `docker compose run --rm --user "$(id -u):$(id -g)" tests`.
+- **Rebuilding is fast.** The dependencies have their own layer, so after a code change
+  the rebuild takes about a second; only a change to `pyproject.toml` or `uv.lock`
+  reinstalls them. The first build downloads the 2.9 GB image (about 3 minutes here).
+- **One Playwright version.** The image's browsers are built for one Playwright version,
+  so TC-CFG-003 fails if the Dockerfile and `uv.lock` name different versions.
+- The full suite in all three browsers takes about 2.5 minutes in the container on a
+  4-core, 8-thread laptop.
+
 ## Reports and debugging
 
 **HTML report.** Add `--html` to write one self-contained file:
@@ -132,6 +174,7 @@ separately, so a push never cancels a nightly run, and a nightly run never cance
 |---|---|
 | **Lint, types, unit tests** | `ruff check`, `ruff format --check`, `mypy`, then the unit tests (no browser) |
 | **Tests (chromium)** and **Tests (firefox)** | Starts after the first job passes. A matrix runs one job per browser, in parallel; one failing does not cancel the others. Installs the browser (cached), then runs the whole suite with `-n auto` and one rerun for failed tests (`--reruns 1`). |
+| **Docker (smoke)** | Starts after the first job passes. Builds the image from the `Dockerfile` and runs the unit and smoke tests inside it, so a broken image fails the run. |
 
 **Nightly run.** The scheduled run adds a **Tests (webkit)** job and runs each test three
 times (`--count 3`, pytest-repeat), still with one rerun. Each browser job may take 30
@@ -180,6 +223,9 @@ BUGS.md                     bug reports
 STRATEGY.md                 test strategy
 pyproject.toml              dependencies, pytest options and tags, ruff, mypy
 .github/workflows/ci.yml    CI pipeline
+Dockerfile                  the test image: official Playwright image + locked dependencies
+compose.yaml                docker compose run --rm tests: password, output folders, user
+.dockerignore               what the image never sees (.env, outputs, local notes)
 ```
 
 ## Key design decisions
@@ -305,6 +351,17 @@ here.
   button, or staying on the cart page.
 - **Products with the same price have no defined order.** Two products cost $15.99, so the
   price-sort tests compare prices only, not names.
+- **`standard_user` is the reference.** Each special user was compared with it action by
+  action, and every difference that reproduces is reported as a bug, even when the demo
+  builds it in on purpose (as for `performance_glitch_user`): in a real product it would be
+  one.
+- **Fields of only spaces count as empty (BUG-014).** The site rejects empty fields; I
+  assume it means to reject blank ones too.
+- **Money is shown in dollars and cents (BUG-013).** An item total of
+  `$105.96000000000001` is a display bug, even though the amount is right to the cent.
+- **A page should appear within 2 seconds.** The site states no target. Two seconds is at
+  least ten times what `standard_user` needs and well under the 5-second freeze, and it is
+  a setting (`SAUCE_PAGE_BUDGET_SECONDS`).
 
 ## Bonus: performance
 
@@ -354,8 +411,22 @@ live site. It isn't load testing (see STRATEGY.md).
 - **Not covered:** `visual_user`'s layout differences (no screenshot tests), and
   accessibility.
 
-Next, in order: a quarantine marker with an owner and an expiry date (see STRATEGY.md),
-then accessibility checks with axe on the main pages.
+With more time, in this order:
+
+1. **Screenshot tests for `visual_user`, in Docker.** Its remaining bugs are about layout
+   (things out of place), which DOM checks can't see. The Docker image gives the fixed
+   fonts and browsers that stable baselines need. Playwright for Python has no built-in
+   screenshot assertion, so this needs a small comparison helper (Pillow and pixelmatch)
+   with an option to update the baselines.
+2. **CI jobs inside the Docker image.** That removes the browser install from every job
+   (for WebKit, about 165 system packages), which would make WebKit cheap enough to run on
+   every pull request, not only nightly.
+3. **A quarantine marker with an owner and an expiry date,** so a flaky test leaves the
+   pull-request gate without being forgotten (see STRATEGY.md).
+4. **Accessibility checks with axe on the main pages.** Cheap to add, and they catch whole
+   classes of problems (missing labels, low contrast) that functional tests never look at.
+5. **A trace for the one-time login.** When the saved-session login fails, today there is
+   only an error message; a trace would make it as easy to debug as any test.
 
 ## Use of AI
 

@@ -2,7 +2,7 @@
 
 Written as if Sauce Demo were a product my team owns.
 
-**Today:** 111 tests (72 UI, 39 unit tests of the framework) covering the 98 cases in
+**Today:** 112 tests (72 UI, 40 unit tests of the framework) covering the 99 cases in
 TEST_PLAN.md; 24 UI tests cover the 17 known bugs and run as expected failures. On a
 4-core, 8-thread laptop the unit tests take about a second, and with `-n auto` the UI
 suite takes about 61 seconds in Chromium and 78 in Firefox. In CI, a push or pull request
@@ -60,8 +60,9 @@ those checks would move down a layer.
 ## How you would scale this framework to 1,000+ tests and several contributors
 
 Already in place: page objects and a shared header component, fixtures that hide setup,
-test-case IDs with a traceability report, automatic tags, `--strict-markers`, and lint,
-format and type checks in CI. Next:
+test-case IDs with a traceability report, automatic tags, `--strict-markers`, lint,
+format and type checks in CI, and a Docker image that runs the suite the same way on any
+machine. Next:
 
 - **More components.** Pages built from shared parts (product card, cart row, form, menu),
   so each part changes in one place.
@@ -77,6 +78,8 @@ format and type checks in CI. Next:
   pytest-split) so they finish together.
 - **Ownership.** Each feature tag and folder belongs to one team; CODEOWNERS on
   `tests/ui/<feature>/` and `framework/pages/` makes that team review changes.
+- **One environment for everyone.** Run the CI jobs in the same Docker image contributors
+  use locally, so a failure in CI reproduces with the same browsers and fonts on a laptop.
 - **A report with history.** Send JUnit XML (`--junitxml`) to a store such as Allure or
   ReportPortal to see trends, the slowest tests and each test's flake rate.
 
