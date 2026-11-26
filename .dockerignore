@@ -1,0 +1,15 @@
+# What the image build never sees: secrets, local environments, outputs and notes.
+.env
+.git
+.venv
+reports
+test-results
+**/__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.superpowers
+.claude
+docs
+*.docx
+.~lock.*#

@@ -1,0 +1,27 @@
+# Runs the test suite in the image built from the Dockerfile. Anything after "tests" goes
+# to pytest:
+#   docker compose run --rm tests                      # everything, Chromium
+#   docker compose run --rm tests -m smoke
+#   docker compose run --rm tests --browser webkit
+services:
+  tests:
+    build: .
+    image: saucedemo-playwright-tests
+    environment:
+      # From your shell or .env. Compose stops with this message if it's missing.
+      SAUCE_PASSWORD: ${SAUCE_PASSWORD:?set SAUCE_PASSWORD in .env or your shell}
+      # Optional; passed on only if set, otherwise the code's defaults apply.
+      SAUCE_BASE_URL:
+      SAUCE_PAGE_BUDGET_SECONDS:
+      # The container runs as you (below), a user with no home folder in the image.
+      HOME: /tmp
+      # /app belongs to root, so pytest can't keep its cache there.
+      PYTEST_ADDOPTS: -p no:cacheprovider
+    # Run as your user, so reports and traces on your machine are yours, not root's.
+    # If your IDs aren't 1000: docker compose run --rm --user "$(id -u):$(id -g)" tests
+    user: "1000:1000"
+    volumes:
+      - ./reports:/app/reports
+      - ./test-results:/app/test-results
+    ipc: host # Chromium needs more shared memory than Docker's 64 MB default
+    init: true # a proper init process reaps the browsers' child processes
