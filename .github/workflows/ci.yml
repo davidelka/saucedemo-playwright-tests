@@ -1,14 +1,25 @@
 name: CI
 
+# "Nightly" below means the scheduled run, or "Run workflow" with the nightly box ticked:
+#   github.event_name == 'schedule' || inputs.nightly
+# GitHub doesn't let strategy or timeout-minutes read env, so the condition is repeated.
 on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    - cron: "0 3 * * *" # every day at 03:00 UTC, on the default branch
   workflow_dispatch: # "Run workflow" button, on any branch
+    inputs:
+      nightly:
+        description: "Nightly run: add WebKit and run each test 3 times"
+        type: boolean
+        default: false
 
 # A newer push to the same branch cancels the run still in progress.
+# Nightly runs get their own group, so a push and a nightly run don't cancel each other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.ref }}${{ (github.event_name == 'schedule' || inputs.nightly) && '-nightly' || '' }}
   cancel-in-progress: true
 
 permissions:
@@ -37,13 +48,15 @@ jobs:
     name: Tests (${{ matrix.browser }})
     needs: lint
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # Nightly runs every test three times, so it gets more time.
+    timeout-minutes: ${{ (github.event_name == 'schedule' || inputs.nightly) && 30 || 15 }}
     strategy:
-      fail-fast: false # one browser failing doesn't cancel the other
+      fail-fast: false # one browser failing doesn't cancel the others
       matrix:
-        browser: [chromium, firefox]
+        # Push and pull request: Chromium and Firefox. Nightly adds WebKit.
+        browser: ${{ fromJSON((github.event_name == 'schedule' || inputs.nightly) && '["chromium", "firefox", "webkit"]' || '["chromium", "firefox"]') }}
     env:
-      SAUCE_PASSWORD: ${{ vars.SAUCE_PASSWORD }} # repository variable, not in the code
+      SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }} # repository secret: masked as *** in the log
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.4.0 # setup-uv publishes exact versions only (no v10 tag)
@@ -59,10 +72,12 @@ jobs:
         run: uv run playwright install --with-deps ${{ matrix.browser }}
       # Tracing and screenshots on failure come from pyproject.toml (addopts).
       # The traceability report is also written to this job's summary page.
+      # Nightly adds --count 3 (pytest-repeat): each test runs three times, to find flaky tests.
       - name: Run tests
         run: >-
           uv run pytest -m "not visual" -n auto --browser ${{ matrix.browser }}
           --reruns 1
+          ${{ (github.event_name == 'schedule' || inputs.nightly) && '--count 3' || '' }}
           --html reports/report-${{ matrix.browser }}.html --self-contained-html
       - name: Upload HTML report and traceability report
         if: always()
@@ -71,8 +86,11 @@ jobs:
           name: report-${{ matrix.browser }}
           path: reports/
           retention-days: 14
-      - name: Upload traces and screenshots of failed tests
-        if: failure()
+      # Uploaded whenever tests ran, not only when the job fails: a test that fails and then
+      # passes on its rerun leaves the job green, and its first attempt's trace is what
+      # explains the flake.
+      - name: Upload traces and screenshots of failed attempts (including flaky tests)
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: traces-${{ matrix.browser }}
