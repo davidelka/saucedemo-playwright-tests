@@ -41,6 +41,7 @@ markers = [
     "inventory: product list and sorting",
     "cart: cart badge and contents",
     "checkout: checkout flow, totals and validation",
+    "menu: side menu (logout, About, Reset App State)",
     # Flow
     "happy: positive flow, valid input",
     "negative: invalid input or a blocked action",

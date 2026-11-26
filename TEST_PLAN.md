@@ -122,6 +122,16 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-CHECKOUT-014 | Empty Last Name shows "Error: Last Name is required" and stays on step one (standard_user, control for TC-CHECKOUT-015) | P2 | checkout, negative, bug, user_standard | Automated |
 | TC-CHECKOUT-015 | Empty Last Name blocks checkout, error_user (known bug BUG-009) | P2 | checkout, negative, bug, user_error | Automated |
 
+## MENU: Side menu
+
+The menu behind the ☰ button in the header. The About link is checked by its address only;
+the test never opens the external site.
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-MENU-001 | Logout returns to the login page | P1 | menu, login, happy | Automated |
+| TC-MENU-002 | After logout, opening /inventory.html shows the login form with "You can only access…" | P1 | menu, login, negative | Automated |
+
 ## CFG: Configuration
 
 | ID | Title | Priority | Tags | Status |
