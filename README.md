@@ -1,0 +1,327 @@
+# Sauce Demo test framework (Playwright + pytest)
+
+<!-- TODO: link CI badge -->
+
+UI tests for [Sauce Demo](https://www.saucedemo.com), a public practice store, written in
+Python with Playwright (sync API, through pytest-playwright).
+
+- **Core flows:** login, sorting, cart, checkout totals and checkout validation.
+- **Known bugs:** bugs of `problem_user`, `error_user` and one of `standard_user` are tests
+  that are expected to fail, each linked to a report in [BUGS.md](BUGS.md).
+- **CI:** GitHub Actions runs the suite on Chromium and Firefox in parallel. Each run keeps
+  an HTML report, a traceability report and the traces of failed tests.
+
+Other documents: [TEST_PLAN.md](TEST_PLAN.md) (every test case and its ID),
+[BUGS.md](BUGS.md) (bug reports), [STRATEGY.md](STRATEGY.md) (test strategy).
+
+Latest CI run: <!-- TODO: link -->
+
+## Setup
+
+You need Python 3.12 and [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync --locked
+```
+
+```bash
+uv run playwright install
+```
+
+```bash
+cp .env.example .env
+```
+
+- `uv sync --locked` installs the exact versions from `uv.lock` into `.venv`.
+- `playwright install` downloads the browsers. On a fresh Linux machine add `--with-deps`
+  to also install the system libraries they need (CI does this).
+- `.env` holds `SAUCE_BASE_URL` and `SAUCE_PASSWORD`. The password is the public demo
+  password shown on the login page. The code has no default for it: if it is missing,
+  every browser test errors at setup with a validation error that names `password`
+  (unit tests still run).
+
+## Running the tests
+
+```bash
+uv run pytest -n auto
+```
+
+This runs everything in Chromium, headless, with one worker process per logical CPU.
+
+| To run | Command |
+|---|---|
+| Smoke tests (critical path) | `uv run pytest -m smoke` |
+| Regression (all UI tests) | `uv run pytest -m regression` |
+| Known-bug tests, with each bug's reason | `uv run pytest -m bug -rx` |
+| One feature | `uv run pytest -m login` (also `inventory`, `cart`, `checkout`) |
+| Positive or negative cases | `uv run pytest -m happy` or `-m negative` |
+| One user | `uv run pytest -m user_problem` (also `user_standard`, `user_error`, …) |
+| Browser tests only | `uv run pytest -m ui` |
+| Framework unit tests (no browser) | `uv run pytest -m unit` |
+| Combined tags | `uv run pytest -m "checkout and not bug"` |
+| By test-case ID | `uv run pytest --tc TC-LOGIN-001,TC-CART-001` |
+| In Firefox | `uv run pytest --browser firefox` |
+| In both browsers | `uv run pytest --browser chromium --browser firefox` |
+| With a visible browser | `uv run pytest --headed --tc TC-CHECKOUT-001` |
+| In parallel | add `-n auto` to any command |
+| Three times each (to find flaky tests) | `uv run pytest -n auto --count 3` |
+| Without TEST_PLAN.md | add `--no-test-plan` (no plan is read, no traceability report is written) |
+
+All tags are listed in `pyproject.toml` under `markers`. Because of `--strict-markers`, a
+misspelled tag is an error, both on a test and after `-m` (pytest stops with "Unknown
+marker(s) in '-m' expression"). Login-form tests don't use the `user` fixture, so they get
+no user tag, and `-m user_locked_out` selects nothing.
+
+Code checks (CI runs the same):
+
+```bash
+uv run ruff check .
+```
+
+```bash
+uv run ruff format --check .
+```
+
+```bash
+uv run mypy framework tests
+```
+
+## Reports and debugging
+
+**HTML report.** Add `--html` to write one self-contained file:
+
+```bash
+uv run pytest -n auto --html reports/report.html --self-contained-html
+```
+
+It has a **Test ID** column. For a failed test it shows the screenshot and a link to the
+trace.
+
+**Traceability report.** Every run writes `reports/traceability.md`. It lists each case in
+`TEST_PLAN.md` with its result (passed, failed, expected failure, passed on rerun, skipped
+or not run) and the tests that ran it. It also lists tests without an ID and IDs that are
+not in the plan. A missing or unknown ID is listed, not treated as a failure. In CI the
+same report is shown on the job's summary page.
+
+**Traces and screenshots.** `pyproject.toml` sets
+`--tracing=retain-on-failure --screenshot=only-on-failure --output=test-results` for every
+run. A failed test leaves `test-results/<test name>/trace.zip` and `test-failed-1.png`. If a
+rerun follows, it gets its own folder with `-retry1` at the end. Open a trace with:
+
+```bash
+uv run playwright show-trace test-results/<test name>/trace.zip
+```
+
+The trace viewer shows each action with the page before and after it, plus the console
+and network log. You can also drop the file on https://trace.playwright.dev.
+
+## CI
+
+The workflow is `.github/workflows/ci.yml`. It runs on a push to `main`, on every pull
+request, and from the "Run workflow" button. A newer push to the same branch cancels the
+run still in progress.
+
+| Job | What it does |
+|---|---|
+| **Lint, types, unit tests** | `ruff check`, `ruff format --check`, `mypy`, then the unit tests (no browser) |
+| **Tests (chromium)** and **Tests (firefox)** | Starts after the first job passes. A matrix runs one job per browser, in parallel; one failing does not cancel the other. Installs the browser (cached), then runs the whole suite with `-n auto` and one rerun for failed tests (`--reruns 1`). |
+
+Artifacts, per browser, kept for 14 days:
+
+| Artifact | Contents | Uploaded |
+|---|---|---|
+| `report-<browser>` | HTML report and `traceability.md` | always |
+| `traces-<browser>` | `test-results/`: traces and screenshots of failed tests | only when the job fails |
+
+<!-- TODO: confirm after pass 1/3: traces are uploaded whenever tests ran (`if: !cancelled()`), so a flaky test's trace is kept even when the job passes -->
+
+The password comes from the repository variable `SAUCE_PASSWORD`, not from the code.
+<!-- TODO: confirm after pass 1/3: password moves to a GitHub secret -->
+<!-- TODO: confirm after pass 1/3: nightly schedule (see STRATEGY.md) -->
+
+## Project structure
+
+```
+framework/                  reusable code, no tests
+  config.py                 settings from SAUCE_* environment variables or .env
+  auth.py                   log a user in once and save the session (storage state)
+  bugs.py                   xfail_bug(): known-bug marker linked to BUGS.md
+  money.py                  parse_price() and expected_tax(), with Decimal
+  flows.py                  steps that span pages (start_checkout)
+  tagging.py                pytest plugin: adds layer and user tags automatically
+  testcase.py               pytest plugin: tc() IDs, --tc, traceability report
+  components/               header.py (cart link and badge), product_item.py
+  pages/                    page objects: login, inventory, product, cart, checkout
+  data/                     users, expected catalog, checkout customer
+tests/
+  conftest.py               fixtures: settings, auth_state, logged_in_page, page objects
+  ui/                       browser tests, one file per feature
+  unit/                     tests of the framework itself, no browser
+TEST_PLAN.md                every test case: ID, title, priority, tags, status
+BUGS.md                     bug reports
+STRATEGY.md                 test strategy
+pyproject.toml              dependencies, pytest options and tags, ruff, mypy
+.github/workflows/ci.yml    CI pipeline
+docs/superpowers/plans/     the implementation plan written before coding
+```
+
+## Key design decisions
+
+**Page objects, plus a header component.** Each page object holds its locators and actions
+and returns plain values read from the page. For example, `InventoryPage.products()`
+returns `Product(name, price)` objects and `CartPage.items()` returns `CartItem(name,
+price, quantity)`. Tests compare those values. The header (cart link and badge) appears on
+most pages after login, so it is one `Header` class that the inventory, product, cart and
+order-complete page objects own (`inventory_page.header.cart_badge`). Most locators use Sauce
+Demo's `data-test` attributes through `get_by_test_id`; `tests/conftest.py` points
+Playwright at that attribute. The Add to cart and Remove buttons are found by role and name
+inside their product card. *Why:* when the page changes, one file changes, and tests read
+like the steps of a test case. `data-test` attributes don't change when text or styling
+does.
+
+**Fixtures provide everything.** A test asks for what it needs by name, for example
+`inventory_page` or `cart_page`, and pytest builds it. All page-object fixtures in one test,
+except `login_page`, share the same logged-in page, so `inventory_page` and `cart_page` drive the same tab.
+pytest-playwright creates each browser context, records the trace, and closes the context
+after the test. *Why:* setup and cleanup live in one place (`tests/conftest.py`), and every
+test starts from a fresh browser context, so tests don't share a cart and can run in any
+order or in parallel.
+
+**Log in once, reuse the session.** Only the login tests fill in the login form as part of
+the test. For every other test, the `auth_state` fixture logs the user in once through the UI and saves the
+session (cookies and localStorage) to a JSON file. `logged_in_page` opens a new context
+from that file, so the test starts already logged in. This happens once per user, per
+xdist worker and per browser: each worker is its own pytest session with its own temporary
+folder, so two processes never write the same file. Sauce Demo's session cookie expires
+after 10 minutes, so a file older than 5 minutes is re-created (tested by TC-AUTH-006).
+*Why:* logging in through the form before every test is slow and tests the same thing
+again and again.
+
+**Expected values come from the page, with one pinned catalog test.** Sorting, cart and
+checkout tests read names and prices from the product list, then compute the expected
+order, cart contents or totals. Only TC-INV-001 compares the product list with a fixed
+catalog (`framework/data/products.py`). *Why:* a new or repriced product breaks one test,
+not twenty, and that test's failure says exactly what changed. The trade-off: if the
+product list itself showed a wrong price, the cart tests would agree with it. TC-INV-001
+is the test that catches that.
+
+**Money is `Decimal`, tax is rounded half-up.** `parse_price` turns `"$29.99"` or
+`"Item total: $29.99"` into `Decimal("29.99")`. `expected_tax` is 8% of the item total,
+rounded to the cent with `ROUND_HALF_UP`. *Why:* a float can't hold 15.99 exactly, so sums
+can drift. Python's `round()` and `Decimal`'s default both round half to even
+(0.125 → 0.12), which is not how shops round money; half-up is written down explicitly.
+<!-- TODO: confirm after pass 1/3: price parsing becomes strict (today it takes the first "$N.NN" anywhere in the text) -->
+
+**Known bugs are strict expected failures, most with a control case.** `xfail_bug("BUG-005",
+"…")` (in `framework/bugs.py`) is `pytest.mark.xfail` with `strict=True`,
+`raises=AssertionError` and a reason that links to BUGS.md. `strict=True`: when the bug is
+fixed the test passes, and the run fails with `XPASS(strict)`, so the marker gets removed.
+`raises=AssertionError`: only a failed check counts as the bug. A failed `expect(...)` is
+one: it retries for up to 5 seconds, then raises `AssertionError`. A click or fill that
+can't find its element raises Playwright's `TimeoutError` instead, so it still fails the
+run, as does any other error. Bug tests that run as several users also run as `standard_user`,
+where the same check must pass. That proves the test checks the right thing. (BUG-001 is a
+`standard_user` bug, so its test has no control case.)
+*Why:* a known bug shouldn't turn CI red every day, but an expected failure must never hide
+a broken test or a fixed bug.
+<!-- TODO: confirm after pass 1/3: only the bug's own check is wrapped in bug_symptom() (framework/bugs.py), so a failed setup step fails the run instead of counting as the bug -->
+
+**Test-case IDs and a traceability report.** Every test, or each case of a parametrized
+test, has one `@tc("TC-<AREA>-<NNN>")` mark that matches a row in TEST_PLAN.md. After the
+run, `framework/testcase.py` writes `reports/traceability.md`. When one ID runs several
+times (in two browsers, say), the worst result wins. *Why:* anyone can see which planned
+cases passed without reading code, run a case by its ID (`--tc`), and spot a test that has
+no ID. The report works with xdist: results from all workers are collected in the main
+process.
+
+**Automatic tags.** `framework/tagging.py` adds two kinds of tag at collection time. The
+layer tag comes from the folder (`tests/ui/` → `ui`, `tests/unit/` → `unit`). The user tag
+comes from the `user` a test runs as (`problem_user` → `user_problem`; tests that start
+logged in without choosing a user get `user_standard`). Suite (`smoke`, `regression`), feature, flow (`happy`,
+`negative`) and `bug` tags are written on the tests. *Why:* tags that can be derived are
+never forgotten or wrong.
+
+**Configuration.** `framework/config.py` reads `SAUCE_*` environment variables or `.env`
+with pydantic-settings. The password is a `SecretStr`, so it shows as `**********` if
+settings are printed. *Why:* the same code runs locally and in CI, and no secret is in the
+repository.
+
+## Playwright TypeScript → this project
+
+The assignment's examples use Playwright Test (TypeScript). These are the equivalents used
+here.
+
+| Playwright Test (TypeScript) | Here (pytest) |
+|---|---|
+| `test.fail()` | `xfail_bug(...)`: `pytest.mark.xfail(strict=True, raises=AssertionError)` |
+| Setup project + `storageState` | `auth_state` fixture + `new_context(storage_state=...)` in `logged_in_page` |
+| `projects` (one per browser) | `--browser chromium --browser firefox`; in CI, a matrix job per browser |
+| `trace: 'retain-on-failure'` | `--tracing=retain-on-failure` (in `addopts`, `pyproject.toml`) |
+| `screenshot: 'only-on-failure'` | `--screenshot=only-on-failure` (same place) |
+| `retries: 1` | `--reruns 1` (pytest-rerunfailures) |
+| `workers` | `-n auto` (pytest-xdist) |
+| `--repeat-each 3` | `--count 3` (pytest-repeat) |
+| `test.extend()` fixtures | pytest fixtures in `tests/conftest.py` |
+| Tags + `--grep @smoke` | markers + `-m smoke` |
+| `use: { testIdAttribute: 'data-test' }` | `playwright.selectors.set_test_id_attribute("data-test")` |
+| `use: { baseURL }` | `base_url` fixture, from `SAUCE_BASE_URL` |
+| HTML reporter | pytest-html: `--html reports/report.html --self-contained-html` |
+
+## Assumptions
+
+- **Tax is 8% of the item total, rounded to the cent, half a cent up.** The site doesn't
+  state the rule; 8% matches the totals it shows. With 8% and whole-cent prices, a total
+  can never land exactly on half a cent, so half-up and half-even give the same result on
+  this site. Half-up is set explicitly so the rule still holds if the rate changes.
+- **The password is public.** `secret_sauce` is printed on the login page and in the
+  assignment. No code file contains it: `.env.example` has it as the documented value, and
+  the code reads it from the environment with no default.
+- **BUG-001 (checkout with an empty cart) is a judgment call.** The site lets you check out
+  an empty cart and shows "Thank you for your order!". The assignment doesn't define this
+  case; I treat an empty order as a bug. The test accepts either fix: a disabled Checkout
+  button, or staying on the cart page.
+- **Products with the same price have no defined order.** Two products cost $15.99, so the
+  price-sort tests compare prices only, not names.
+
+## Bonus: performance (planned, not built)
+
+<!-- TODO: performance bonus not built yet; update this section when it is -->
+
+Already in place: `performance_glitch_user` logs in without any sleep. The saved-session
+login waits for the inventory URL with Playwright's 30-second navigation timeout, not the
+5-second assertion timeout (TC-AUTH-003).
+
+Plan: measured locally, this user takes about 5 seconds from clicking Login to seeing the
+product list; `standard_user` takes about 0.1 seconds. A test would time each key action
+(log in, open the cart, each checkout step) up to the point where the next page is shown,
+and assert it stays under a budget of about 2 seconds. It would run as `standard_user`,
+where it must pass, and as `performance_glitch_user`, where it is a strict expected failure
+linked to a BUGS.md entry. No sleeps: Playwright waits for the page, the test only
+measures how long that took.
+
+## Known limitations and next steps
+
+- **Runs against the live public site.** If Sauce Demo is down or changes, the run fails.
+  One rerun absorbs short glitches, not outages.
+- **Traces of flaky tests are lost in CI.** A test that passes on its rerun is marked flaky
+  in the traceability report, but its trace is uploaded only when the job fails.
+  <!-- TODO: confirm after pass 1/3: fixed by uploading with !cancelled() -->
+- **A known-bug test also passes as "expected failure" if an earlier step fails its
+  check.** `raises=AssertionError` applies to the whole test.
+  <!-- TODO: confirm after pass 1/3: fixed by bug_symptom() -->
+- **The one-time login that creates a saved session has no trace.** It runs in its own
+  context, outside pytest-playwright's tracing; if it fails, you get the error message only.
+- **Not covered:** WebKit, `visual_user`'s layout differences (no screenshot tests),
+  accessibility, and the burger menu (logout, reset app state).
+- **No nightly run yet.** <!-- TODO: confirm after pass 1/3 -->
+
+Next, in order: the performance check above, a nightly run with WebKit and `--count 3`, a
+quarantine marker with an owner and an expiry date (see STRATEGY.md), then accessibility
+checks with axe on the main pages.
+
+## Use of AI
+
+I used an AI coding assistant (Claude Code) while building this: to draft code, tests and
+documents, and to review them. I made the design decisions, checked every change, ran the
+suite locally and in CI, and can explain each part. The implementation plan in
+`docs/superpowers/plans/` was written with the assistant at the start.
