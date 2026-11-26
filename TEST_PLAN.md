@@ -145,10 +145,11 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-UNIT-012 | A missing TEST_PLAN.md skips the report with a message and never fails the run | P3 | unit | Automated |
 | TC-UNIT-013 | `parse_price` reads prices from labels ("$7.99", "Item total: $29.99", "$0") | P2 | unit | Automated |
 | TC-UNIT-014 | `expected_tax` is 8% rounded to the cent, half a cent rounding up | P2 | unit | Automated |
-| TC-UNIT-015 | `parse_price` raises on text without a price instead of guessing | P3 | unit | Automated |
+| TC-UNIT-015 | `parse_price` raises on text that isn't a price label (no price, minus sign, thousands separator, text after it) instead of guessing | P2 | unit | Automated |
 | TC-UNIT-016 | `xfail_bug`: a failed check inside `bug_symptom()` is an expected failure, linked to BUGS.md | P2 | unit | Automated |
 | TC-UNIT-017 | `xfail_bug`: a timeout (even inside `bug_symptom()`) and a fixed bug (pass) both fail the run | P2 | unit | Automated |
 | TC-UNIT-018 | `xfail_bug` rejects a malformed bug ID | P3 | unit | Automated |
 | TC-UNIT-019 | Report marks a test that passed only after a rerun as flaky, and counts it | P2 | unit | Automated |
 | TC-UNIT-020 | `xfail_bug`: a failed check before `bug_symptom()` (a setup step) fails the run, not counted as the bug | P2 | unit | Automated |
 | TC-UNIT-021 | `bug_symptom()` keeps the failure message and the original error | P3 | unit | Automated |
+| TC-UNIT-022 | `parse_price` keeps every digit shown (`$89.8` -> 89.8, `$105.96000000000001` as shown), never rounds or cuts | P2 | unit | Automated |
