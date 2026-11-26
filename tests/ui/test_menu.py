@@ -10,7 +10,6 @@ import pytest
 from playwright.sync_api import expect
 
 from framework.bugs import bug_symptom, xfail_bug
-from framework.config import Settings
 from framework.data.users import User
 from framework.pages.inventory_page import InventoryPage
 from framework.pages.login_page import LoginPage
@@ -25,9 +24,9 @@ ABOUT_PAGE = re.compile(r"^https://saucelabs\.com/?$")
 @tc("TC-MENU-001")
 @pytest.mark.login
 @pytest.mark.happy
-def test_logout_returns_to_login_page(inventory_page: InventoryPage, settings: Settings) -> None:
+def test_logout_returns_to_login_page(inventory_page: InventoryPage) -> None:
     inventory_page.header.menu.logout()
-    expect(inventory_page.page).to_have_url(settings.base_url + "/")
+    expect(inventory_page.page).to_have_url(LoginPage.URL)
     expect(LoginPage(inventory_page.page).login_button).to_be_visible()
 
 

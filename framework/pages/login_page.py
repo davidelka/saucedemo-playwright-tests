@@ -1,10 +1,15 @@
 """The login page (``/``)."""
 
+import re
+
 from playwright.sync_api import Page
 
 
 class LoginPage:
     PATH = "/"
+    # For expect(page).to_have_url(): the site's root, whatever the host. With or without
+    # a trailing slash in the base URL, the browser shows the root as "https://host/".
+    URL = re.compile(r"^https?://[^/]+/$")
 
     def __init__(self, page: Page) -> None:
         self.page = page

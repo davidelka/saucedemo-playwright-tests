@@ -77,7 +77,7 @@ def test_login_failure(
         username, settings.password.get_secret_value() if password is None else password
     )
     expect(login_page.error).to_have_text(message)
-    expect(page).to_have_url(settings.base_url + "/")  # still on the login page
+    expect(page).to_have_url(LoginPage.URL)  # still on the login page
 
 
 @tc("TC-LOGIN-007")
