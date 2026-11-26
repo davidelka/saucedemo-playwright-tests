@@ -163,7 +163,7 @@ change it). The time is measured to within about 50 ms (see `framework/timing.py
 
 | ID | Title | Priority | Tags | Status |
 |----|-------|----------|------|--------|
-| TC-CFG-001 | Missing `SAUCE_PASSWORD` fails fast with a clear validation error | P2 | unit | Automated |
+| TC-CFG-001 | Missing or empty `SAUCE_PASSWORD` fails fast with a clear validation error | P2 | unit | Automated |
 | TC-CFG-002 | Settings are read from `SAUCE_*` environment variables | P2 | unit | Automated |
 | TC-CFG-003 | The Docker image uses the same Playwright version as `uv.lock` | P2 | unit | Automated |
 
