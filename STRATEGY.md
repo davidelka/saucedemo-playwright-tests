@@ -2,10 +2,12 @@
 
 Written as if Sauce Demo were a product my team owns.
 
-**Today:** 89 tests (52 UI, 37 unit tests of the framework) covering the 76 cases in
-TEST_PLAN.md; 14 UI tests are known bugs, run as expected failures. On a 4-core, 8-thread
-laptop the unit tests take about 2 seconds, and with `-n auto` the UI suite takes about 40
-seconds in Chromium and 53 in Firefox. <!-- TODO: re-measure after pass 1/3 adds bugs, and add the CI run time -->
+**Today:** 101 tests (64 UI, 37 unit tests of the framework) covering the 88 cases in
+TEST_PLAN.md; 20 UI tests cover the 16 known bugs and run as expected failures. On a
+4-core, 8-thread laptop the unit tests take about a second, and with `-n auto` the UI
+suite takes about 46 seconds in Chromium and 55 in Firefox. In CI, a push or pull request
+run takes about 4 minutes from start to finish; the slowest part is the Firefox tests
+(about 2.5 minutes on GitHub's 4-core runner).
 
 The rule throughout: **test each rule at the lowest layer that can catch it**, and keep UI
 tests for what only a browser can show.

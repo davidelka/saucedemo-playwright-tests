@@ -5,9 +5,10 @@
 UI tests for [Sauce Demo](https://www.saucedemo.com), a public practice store, written in
 Python with Playwright (sync API, through pytest-playwright).
 
-- **Core flows:** login, sorting, cart, checkout totals and checkout validation.
-- **Known bugs:** bugs of `problem_user`, `error_user` and one of `standard_user` are tests
-  that are expected to fail, each linked to a report in [BUGS.md](BUGS.md).
+- **Core flows:** login, sorting, cart, checkout totals and checkout validation, and the
+  side menu (logout, About, Reset App State).
+- **Known bugs:** bugs of `problem_user`, `error_user`, `visual_user` and `standard_user`
+  are tests that are expected to fail, each linked to a report in [BUGS.md](BUGS.md).
 - **CI:** GitHub Actions runs the suite on Chromium and Firefox in parallel, and every night
   on WebKit too, with each test run three times. Each run keeps an HTML report, a
   traceability report and the traces of failed tests.
@@ -54,7 +55,7 @@ This runs everything in Chromium, headless, with one worker process per logical 
 | Smoke tests (critical path) | `uv run pytest -m smoke` |
 | Regression (all UI tests) | `uv run pytest -m regression` |
 | Known-bug tests, with each bug's reason | `uv run pytest -m bug -rx` |
-| One feature | `uv run pytest -m login` (also `inventory`, `cart`, `checkout`) |
+| One feature | `uv run pytest -m login` (also `inventory`, `cart`, `checkout`, `menu`) |
 | Positive or negative cases | `uv run pytest -m happy` or `-m negative` |
 | One user | `uv run pytest -m user_problem` (also `user_standard`, `user_error`, …) |
 | Browser tests only | `uv run pytest -m ui` |
@@ -161,7 +162,8 @@ framework/                  reusable code, no tests
   flows.py                  steps that span pages (start_checkout)
   tagging.py                pytest plugin: adds layer and user tags automatically
   testcase.py               pytest plugin: tc() IDs, --tc, traceability report
-  components/               header.py (cart link and badge), product_item.py
+  components/               header.py (cart link and badge), menu.py (side menu),
+                            product_item.py
   pages/                    page objects: login, inventory, product, cart, checkout
   data/                     users, expected catalog, checkout customer
 tests/
@@ -323,8 +325,8 @@ measures how long that took.
 - **The one-time login that creates a saved session has no trace.** It runs in its own
   context, outside pytest-playwright's tracing; if it fails, you get the error message only.
 - **WebKit runs only nightly,** not on pull requests.
-- **Not covered:** `visual_user`'s layout differences (no screenshot tests), accessibility,
-  and the burger menu (logout, reset app state).
+- **Not covered:** `visual_user`'s layout differences (no screenshot tests), and
+  accessibility.
 
 Next, in order: the performance check above, a quarantine marker with an owner and an
 expiry date (see STRATEGY.md), then accessibility checks with axe on the main pages.
