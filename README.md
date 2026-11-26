@@ -1,6 +1,6 @@
 # Sauce Demo test framework (Playwright + pytest)
 
-<!-- TODO: link CI badge -->
+[![CI](https://github.com/davidelka/saucedemo-playwright-tests/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/davidelka/saucedemo-playwright-tests/actions/workflows/ci.yml?query=branch%3Amain)
 
 UI tests for [Sauce Demo](https://www.saucedemo.com), a public practice store, written in
 Python with Playwright (sync API, through pytest-playwright).
@@ -18,7 +18,7 @@ Python with Playwright (sync API, through pytest-playwright).
 Other documents: [TEST_PLAN.md](TEST_PLAN.md) (every test case and its ID),
 [BUGS.md](BUGS.md) (bug reports), [STRATEGY.md](STRATEGY.md) (test strategy).
 
-Latest CI run: <!-- TODO: link -->
+CI runs (newest first, each with its reports and traces): [GitHub Actions](https://github.com/davidelka/saucedemo-playwright-tests/actions/workflows/ci.yml?query=branch%3Amain)
 
 ## Setup
 
