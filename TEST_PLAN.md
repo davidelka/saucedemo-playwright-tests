@@ -119,6 +119,8 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-CHECKOUT-011 | Checkout fields keep what you type, error_user (known bug BUG-009) | P2 | checkout, bug, user_error | Automated |
 | TC-CHECKOUT-012 | Finish completes the order (standard_user, control for TC-CHECKOUT-013) | P1 | checkout, bug, user_standard | Automated |
 | TC-CHECKOUT-013 | Finish completes the order, error_user (known bug BUG-010) | P1 | checkout, bug, user_error | Automated |
+| TC-CHECKOUT-014 | Empty Last Name shows "Error: Last Name is required" and stays on step one (standard_user, control for TC-CHECKOUT-015) | P2 | checkout, negative, bug, user_standard | Automated |
+| TC-CHECKOUT-015 | Empty Last Name blocks checkout, error_user (known bug BUG-009) | P2 | checkout, negative, bug, user_error | Automated |
 
 ## CFG: Configuration
 

@@ -168,6 +168,37 @@ def test_checkout_fields_keep_what_you_type(
 
 
 @pytest.mark.bug
+@pytest.mark.negative
+@pytest.mark.parametrize(
+    "user",
+    [
+        pytest.param(User.STANDARD, marks=tc("TC-CHECKOUT-014")),
+        pytest.param(
+            User.ERROR,
+            marks=[
+                tc("TC-CHECKOUT-015"),
+                xfail_bug("BUG-009", "checkout continues without a last name"),
+            ],
+        ),
+    ],
+)
+def test_empty_last_name_blocks_checkout(
+    inventory_page: InventoryPage,
+    cart_page: CartPage,
+    checkout_info_page: CheckoutInfoPage,
+    user: User,
+) -> None:
+    start_checkout(inventory_page, cart_page, inventory_page.products()[:1])
+    checkout_info_page.fill(replace(CUSTOMER, last_name=""))
+    checkout_info_page.continue_()
+    with bug_symptom():
+        # The error first: it waits for the page to react, so the URL check after it
+        # can't pass just because the page hadn't moved on yet.
+        expect(checkout_info_page.error).to_have_text("Error: Last Name is required")
+        expect(checkout_info_page.page).to_have_url(CheckoutInfoPage.URL)
+
+
+@pytest.mark.bug
 @pytest.mark.parametrize(
     "user",
     [

@@ -39,7 +39,7 @@ wrong behavior with a workaround, or bad data · Low = cosmetic.
 | [BUG-006](#bug-006) | Remove on the product list does nothing | problem_user, error_user | Medium | TC-CART-009, TC-CART-010 |
 | [BUG-007](#bug-007) | Typing the last name overwrites the first name | problem_user | High | TC-CHECKOUT-010 |
 | [BUG-008](#bug-008) | Sorting shows "Sorting is broken!" and doesn't sort | error_user | Medium | TC-SORT-007, TC-SORT-009 |
-| [BUG-009](#bug-009) | Last Name ignores typing, checkout continues without it | error_user | Medium | TC-CHECKOUT-011 |
+| [BUG-009](#bug-009) | Last Name ignores typing, checkout continues without it | error_user | Medium | TC-CHECKOUT-011, TC-CHECKOUT-015 |
 | [BUG-010](#bug-010) | Finish doesn't complete the order | error_user | High | TC-CHECKOUT-013 |
 
 ## BUG-001
@@ -219,7 +219,7 @@ and the list stays in the default order. The browser console logs
 |---|---|
 | Severity | Medium: orders are placed without a last name (bad data); required-field check bypassed |
 | User | `error_user` |
-| Test | TC-CHECKOUT-011, `tests/ui/test_checkout.py::test_checkout_fields_keep_what_you_type` |
+| Test | TC-CHECKOUT-011, `tests/ui/test_checkout.py::test_checkout_fields_keep_what_you_type` (the field ignores typing); TC-CHECKOUT-015, `test_empty_last_name_blocks_checkout` (Continue goes ahead with Last Name empty) |
 
 **Steps**
 
