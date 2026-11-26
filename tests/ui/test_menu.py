@@ -42,6 +42,16 @@ def test_logged_out_user_cannot_open_inventory(inventory_page: InventoryPage) ->
     expect(inventory_page.title).to_be_hidden()
 
 
+@tc("TC-MENU-006")
+@pytest.mark.login
+@pytest.mark.happy
+def test_logout_right_after_reset_app_state(inventory_page: InventoryPage) -> None:
+    menu = inventory_page.header.menu
+    menu.reset_app_state()  # the menu stays open afterwards
+    menu.logout()
+    expect(LoginPage(inventory_page.page).login_button).to_be_visible()
+
+
 @pytest.mark.bug
 @pytest.mark.parametrize(
     "user",

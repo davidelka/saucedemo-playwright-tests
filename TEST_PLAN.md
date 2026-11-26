@@ -141,6 +141,7 @@ the test never opens the external site.
 | TC-MENU-003 | The About link points to https://saucelabs.com/ (standard_user, control for TC-MENU-004) | P3 | menu, bug, user_standard | Automated |
 | TC-MENU-004 | The About link points to https://saucelabs.com/, problem_user (known bug BUG-015) | P3 | menu, bug, user_problem | Automated |
 | TC-MENU-005 | Reset App State hides the badge and every product's button reads "Add to cart" again (known bug BUG-016) | P2 | menu, bug, user_standard | Automated |
+| TC-MENU-006 | Logout works right after Reset App State, from the menu that stays open | P2 | menu, login, happy | Automated |
 
 ## PERF: Response time
 
