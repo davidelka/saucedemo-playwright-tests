@@ -6,7 +6,8 @@ itself is checked once, in test_inventory.py).
 
 Tests tagged ``bug`` also cover known bugs (see BUGS.md): they run as standard_user
 first, where they must pass (proving the test is right), then as each buggy user,
-where they're an expected failure.
+where they're an expected failure. Only the check inside ``bug_symptom()`` counts
+as the bug; a failure before it fails the run.
 """
 
 from operator import attrgetter
@@ -14,7 +15,7 @@ from operator import attrgetter
 import pytest
 from playwright.sync_api import expect
 
-from framework.bugs import xfail_bug
+from framework.bugs import bug_symptom, xfail_bug
 from framework.data.users import User
 from framework.pages.inventory_page import InventoryPage, Product, SortOption
 from framework.testcase import tc
@@ -75,6 +76,9 @@ def test_sort_orders_products(
     assert sorted(inventory_page.products()) == sorted(shown), "sorting changed the products"
 
 
+SORT_ERROR = "sorting shows 'Sorting is broken!' and doesn't sort"
+
+
 @pytest.mark.bug
 @pytest.mark.parametrize(
     "user",
@@ -84,20 +88,33 @@ def test_sort_orders_products(
             User.PROBLEM,
             marks=[tc("TC-SORT-006"), xfail_bug("BUG-003", "sorting has no effect")],
         ),
-        pytest.param(
-            User.ERROR,
-            marks=[
-                tc("TC-SORT-007"),
-                xfail_bug("BUG-008", "sorting shows 'Sorting is broken!' and doesn't sort"),
-            ],
-        ),
+        pytest.param(User.ERROR, marks=[tc("TC-SORT-007"), xfail_bug("BUG-008", SORT_ERROR)]),
     ],
 )
-def test_sorting_works_without_errors(
-    inventory_page: InventoryPage, dialogs: list[str], user: User
-) -> None:
+def test_sorting_changes_the_order(inventory_page: InventoryPage, user: User) -> None:
     shown = inventory_page.products()
     expected = [f"${p.price}" for p in sorted(shown, key=attrgetter("price"))]
+    # The page starts sorted A-Z; the check below proves something only if that differs.
+    precondition = "precondition: the list already starts in price order"
+    expect(inventory_page.price_labels, precondition).not_to_have_text(expected)
     inventory_page.sort_by(SortOption.PRICE_ASC)
-    expect(inventory_page.price_labels).to_have_text(expected)
-    assert dialogs == [], "the page showed an error alert"
+    with bug_symptom():
+        expect(inventory_page.price_labels).to_have_text(expected)
+
+
+@pytest.mark.bug
+@pytest.mark.parametrize(
+    "user",
+    [
+        pytest.param(User.STANDARD, marks=tc("TC-SORT-008")),
+        pytest.param(User.ERROR, marks=[tc("TC-SORT-009"), xfail_bug("BUG-008", SORT_ERROR)]),
+    ],
+)
+def test_sorting_shows_no_error_alert(
+    inventory_page: InventoryPage, dialogs: list[str], user: User
+) -> None:
+    # select_option() returns only after the page has handled the change, so an alert
+    # it raised has already been recorded (and dismissed) by the dialogs fixture.
+    inventory_page.sort_by(SortOption.PRICE_ASC)
+    with bug_symptom():
+        assert dialogs == [], f"the page showed an alert: {dialogs}"

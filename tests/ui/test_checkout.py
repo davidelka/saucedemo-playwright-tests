@@ -5,7 +5,8 @@ prices the product list showed, so a catalog change doesn't break these tests.
 
 Tests tagged ``bug`` also cover known bugs (see BUGS.md): they run as standard_user
 first, where they must pass (proving the test is right), then as each buggy user,
-where they're an expected failure.
+where they're an expected failure. Only the check inside ``bug_symptom()`` counts
+as the bug; a failure before it fails the run.
 """
 
 from dataclasses import replace
@@ -14,7 +15,7 @@ from decimal import Decimal
 import pytest
 from playwright.sync_api import expect
 
-from framework.bugs import xfail_bug
+from framework.bugs import bug_symptom, xfail_bug
 from framework.data.customer import CUSTOMER, Customer
 from framework.data.users import User
 from framework.flows import start_checkout
@@ -127,7 +128,8 @@ def test_empty_cart_cannot_be_checked_out(
     # Either fix is fine: Checkout disabled, or clicking it keeps you on the cart.
     if cart_page.checkout_button.is_enabled():
         cart_page.checkout()
-    expect(cart_page.page).to_have_url(CartPage.URL)
+    with bug_symptom():
+        expect(cart_page.page).to_have_url(CartPage.URL)
 
 
 @pytest.mark.bug
@@ -159,9 +161,10 @@ def test_checkout_fields_keep_what_you_type(
 ) -> None:
     start_checkout(inventory_page, cart_page, inventory_page.products()[:1])
     checkout_info_page.fill(CUSTOMER)
-    expect(checkout_info_page.first_name).to_have_value(CUSTOMER.first_name)
-    expect(checkout_info_page.last_name).to_have_value(CUSTOMER.last_name)
-    expect(checkout_info_page.postal_code).to_have_value(CUSTOMER.postal_code)
+    with bug_symptom():
+        expect(checkout_info_page.first_name).to_have_value(CUSTOMER.first_name)
+        expect(checkout_info_page.last_name).to_have_value(CUSTOMER.last_name)
+        expect(checkout_info_page.postal_code).to_have_value(CUSTOMER.postal_code)
 
 
 @pytest.mark.bug
@@ -191,4 +194,5 @@ def test_finish_completes_the_order(
     checkout_info_page.continue_()
     expect(checkout_overview_page.finish_button).to_be_visible()  # reached the overview
     checkout_overview_page.finish()
-    expect(checkout_complete_page.complete_header).to_have_text("Thank you for your order!")
+    with bug_symptom():
+        expect(checkout_complete_page.complete_header).to_have_text("Thank you for your order!")

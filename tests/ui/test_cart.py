@@ -6,13 +6,14 @@ the price you saw, and keep working if the catalog changes.
 
 Tests tagged ``bug`` also cover known bugs (see BUGS.md): they run as standard_user
 first, where they must pass (proving the test is right), then as each buggy user,
-where they're an expected failure.
+where they're an expected failure. Only the check inside ``bug_symptom()`` counts
+as the bug; a failure before it fails the run.
 """
 
 import pytest
 from playwright.sync_api import expect
 
-from framework.bugs import xfail_bug
+from framework.bugs import bug_symptom, xfail_bug
 from framework.data.users import User
 from framework.pages.cart_page import CartItem, CartPage
 from framework.pages.inventory_page import InventoryPage, Product
@@ -95,9 +96,11 @@ def test_every_product_can_be_added(
     products = inventory_page.products()
     for product in products:
         inventory_page.add_to_cart(product.name)
-    expect(inventory_page.header.cart_badge).to_have_text(str(len(products)))
     inventory_page.header.open_cart()
-    assert cart_page.items() == [CartItem(p.name, p.price, 1) for p in products]
+    in_cart = cart_page.items()
+    with bug_symptom():
+        expect(cart_page.header.cart_badge).to_have_text(str(len(products)))
+        assert in_cart == [line(p) for p in products]
 
 
 @pytest.mark.bug
@@ -114,4 +117,5 @@ def test_product_can_be_removed_from_the_list(inventory_page: InventoryPage, use
     inventory_page.add_to_cart(product.name)
     expect(inventory_page.header.cart_badge).to_have_text("1")
     inventory_page.remove_from_cart(product.name)
-    expect(inventory_page.header.cart_badge).to_be_hidden()
+    with bug_symptom():
+        expect(inventory_page.header.cart_badge).to_be_hidden()

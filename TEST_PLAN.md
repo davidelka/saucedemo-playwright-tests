@@ -15,7 +15,8 @@ The HTML report also has a **Test ID** column.
 
 Known-bug cases (tag `bug`) live in their feature's test file and table.
 Each runs as `standard_user` first as a control (it must pass), then as the buggy user,
-where it's an expected failure linked to [BUGS.md](BUGS.md).
+where it's an expected failure linked to [BUGS.md](BUGS.md). Only the check inside
+`bug_symptom()` counts as the bug; a failure before it fails the run.
 
 To run without this file, pass `--no-test-plan`: it is never read and no
 traceability report is written. If the file is missing without the flag, the run
@@ -75,9 +76,11 @@ the opposite way and checks the list moved, so a sort that does nothing fails ev
 | TC-SORT-002 | Name (Z to A): names in Z-A order, same products and prices as before sorting | P2 | inventory, happy | Automated |
 | TC-SORT-003 | Price (low to high): ascending prices, same products and prices as before sorting | P2 | inventory, happy | Automated |
 | TC-SORT-004 | Price (high to low): descending prices, same products and prices as before sorting | P2 | inventory, happy | Automated |
-| TC-SORT-005 | Price sort works with no error alert (standard_user, control for TC-SORT-006/007) | P2 | inventory, bug, user_standard | Automated |
-| TC-SORT-006 | Price sort works with no error alert, problem_user (known bug BUG-003) | P2 | inventory, bug, user_problem | Automated |
-| TC-SORT-007 | Price sort works with no error alert, error_user (known bug BUG-008) | P2 | inventory, bug, user_error | Automated |
+| TC-SORT-005 | Price sort changes the order (standard_user, control for TC-SORT-006/007) | P2 | inventory, bug, user_standard | Automated |
+| TC-SORT-006 | Price sort changes the order, problem_user (known bug BUG-003) | P2 | inventory, bug, user_problem | Automated |
+| TC-SORT-007 | Price sort changes the order, error_user (known bug BUG-008) | P2 | inventory, bug, user_error | Automated |
+| TC-SORT-008 | Sorting shows no error alert (standard_user, control for TC-SORT-009) | P2 | inventory, bug, user_standard | Automated |
+| TC-SORT-009 | Sorting shows no error alert, error_user (known bug BUG-008) | P2 | inventory, bug, user_error | Automated |
 
 ## CART: Cart
 
@@ -143,7 +146,9 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-UNIT-013 | `parse_price` reads prices from labels ("$7.99", "Item total: $29.99", "$0") | P2 | unit | Automated |
 | TC-UNIT-014 | `expected_tax` is 8% rounded to the cent, half a cent rounding up | P2 | unit | Automated |
 | TC-UNIT-015 | `parse_price` raises on text without a price instead of guessing | P3 | unit | Automated |
-| TC-UNIT-016 | `xfail_bug`: a wrong result is an expected failure, linked to BUGS.md | P2 | unit | Automated |
-| TC-UNIT-017 | `xfail_bug`: a broken test (other error) and a fixed bug (pass) both fail the run | P2 | unit | Automated |
+| TC-UNIT-016 | `xfail_bug`: a failed check inside `bug_symptom()` is an expected failure, linked to BUGS.md | P2 | unit | Automated |
+| TC-UNIT-017 | `xfail_bug`: a timeout (even inside `bug_symptom()`) and a fixed bug (pass) both fail the run | P2 | unit | Automated |
 | TC-UNIT-018 | `xfail_bug` rejects a malformed bug ID | P3 | unit | Automated |
 | TC-UNIT-019 | Report marks a test that passed only after a rerun as flaky, and counts it | P2 | unit | Automated |
+| TC-UNIT-020 | `xfail_bug`: a failed check before `bug_symptom()` (a setup step) fails the run, not counted as the bug | P2 | unit | Automated |
+| TC-UNIT-021 | `bug_symptom()` keeps the failure message and the original error | P3 | unit | Automated |

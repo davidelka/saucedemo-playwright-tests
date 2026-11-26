@@ -5,13 +5,14 @@ new price) fails only this test, and the fix is editing framework/data/products.
 
 Tests tagged ``bug`` also cover known bugs (see BUGS.md): they run as standard_user
 first, where they must pass (proving the test is right), then as each buggy user,
-where they're an expected failure.
+where they're an expected failure. Only the check inside ``bug_symptom()`` counts
+as the bug; a failure before it fails the run.
 """
 
 import pytest
 from playwright.sync_api import expect
 
-from framework.bugs import xfail_bug
+from framework.bugs import bug_symptom, xfail_bug
 from framework.data.products import PRODUCTS
 from framework.data.users import User
 from framework.pages.inventory_page import InventoryPage
@@ -43,9 +44,10 @@ def test_catalog_matches_expected(inventory_page: InventoryPage) -> None:
 )
 def test_each_product_has_its_own_image(inventory_page: InventoryPage, user: User) -> None:
     images = inventory_page.product_images()
-    assert len(set(images)) == len(images), (
-        f"{len(images)} products share {len(set(images))} image(s)"
-    )
+    with bug_symptom():
+        assert len(set(images)) == len(images), (
+            f"{len(images)} products share {len(set(images))} image(s)"
+        )
 
 
 @pytest.mark.bug
@@ -69,4 +71,5 @@ def test_product_link_opens_that_product(
         opened[product.name] = product_page.name.inner_text()
         product_page.back()
     # Collect every product first, so one failure shows all the wrong links.
-    assert opened == {name: name for name in opened}, "a link opened a different product"
+    with bug_symptom():
+        assert opened == {name: name for name in opened}, "a link opened a different product"
