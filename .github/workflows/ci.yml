@@ -97,3 +97,30 @@ jobs:
           path: test-results/
           retention-days: 14
           if-no-files-found: ignore
+
+  docker:
+    name: Docker (smoke)
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SAUCE_PASSWORD: ${{ secrets.SAUCE_PASSWORD }} # repository secret: masked as *** in the log
+    steps:
+      - uses: actions/checkout@v7
+      # Proves on every push that the image (Dockerfile, compose.yaml) still builds and runs.
+      - name: Build the image
+        run: docker compose build
+      # The runner's user isn't 1000 (compose.yaml's default), so run as the runner's user,
+      # and create the output folders first so they belong to it.
+      - name: Unit and smoke tests in the container
+        run: |
+          mkdir -p reports test-results
+          docker compose run --rm --user "$(id -u):$(id -g)" tests -m "unit or smoke" --no-test-plan
+      - name: Upload traces and screenshots of failed tests
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: traces-docker
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: ignore
