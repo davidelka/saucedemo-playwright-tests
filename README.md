@@ -290,8 +290,8 @@ it (a page that didn't load, a setup step) stays a plain `AssertionError` or
 `AssertionError`: without the block, a broken setup step would be reported as the known
 bug. A bug test without the block can never be an expected failure, so a forgotten block
 shows up as a red run. Bug tests that run as several users also run as `standard_user`,
-where the same check must pass. That proves the test checks the right thing. (BUG-001 is a
-`standard_user` bug, so its test has no control case.)
+where the same check must pass. That proves the test checks the right thing. (BUG-001,
+BUG-014 and BUG-016 are `standard_user` bugs, so their tests have no control case.)
 *Why:* a known bug shouldn't turn CI red every day, but an expected failure must never hide
 a broken test or a fixed bug.
 

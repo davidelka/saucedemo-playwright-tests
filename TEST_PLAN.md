@@ -14,8 +14,9 @@ Run by ID: `uv run pytest --tc TC-LOGIN-001` or `uv run pytest --tc TC-CART-001,
 The HTML report also has a **Test ID** column.
 
 Known-bug cases (tag `bug`) live in their feature's test file and table.
-Each runs as `standard_user` first as a control (it must pass), then as the buggy user,
-where it's an expected failure linked to [BUGS.md](BUGS.md). Only the check inside
+Each runs as the buggy user, where it's an expected failure linked to [BUGS.md](BUGS.md),
+and as `standard_user`, the control, where it must pass. (BUG-001, BUG-014 and BUG-016 are
+`standard_user` bugs, so they have no control.) Only the check inside
 `bug_symptom()` counts as the bug; a failure before it fails the run.
 
 To run without this file, pass `--no-test-plan`: it is never read and no
