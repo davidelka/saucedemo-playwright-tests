@@ -1,38 +1,31 @@
 """The side menu behind the ☰ button in the header: About, Logout, Reset App State."""
 
-import warnings
-
 from playwright.sync_api import Page, expect
 
 
 class Menu:
     def __init__(self, page: Page) -> None:
         self.open_button = page.get_by_role("button", name="Open Menu")
-        # The sliding panel. It has no data-test; it says whether it's open in aria-hidden.
+        # The sliding panel (react-burger-menu). It has no data-test.
         self.panel = page.locator(".bm-menu-wrap")
         self.about_link = page.get_by_test_id("about-sidebar-link")
         self.logout_link = page.get_by_test_id("logout-sidebar-link")
         self.reset_link = page.get_by_test_id("reset-sidebar-link")
 
     def open(self) -> None:
-        """Open the menu and wait until it says it's open.
+        """Open the menu once the closed panel has settled, and wait until it is shown.
 
-        The panel sets ``aria-hidden="false"`` as soon as it handles the click. Once, in
-        Firefox under heavy parallel load, a click right after the page loaded was ignored:
-        the site starts through a redirect (``/inventory.html`` -> ``/?/inventory.html``)
-        and can look ready before it is. So if the menu hasn't opened after a short wait,
-        click once more, and say so in the run's warnings. A second click can't close a
-        menu that is just slow to slide in, because the flag changes immediately.
+        The closed panel sits off-screen, and about half a second after the page renders
+        the menu also gives it the ``hidden`` attribute. In a full parallel run in Firefox,
+        a click on ☰ landed before that: the trace showed the panel open
+        (``aria-hidden="false"``) and ``hidden="true"`` at the same time, and Logout never
+        became visible. So wait until the closed panel is hidden: by then that late hide
+        has happened, and the click can't race it. (Seen under heavy load only; timed
+        clicks didn't reproduce it on demand.)
         """
+        expect(self.panel, "the closed side menu never settled").to_be_hidden()
         self.open_button.click()
-        try:
-            expect(self.panel).to_have_attribute("aria-hidden", "false", timeout=2_000)
-        except AssertionError:
-            warnings.warn("the side menu ignored a click; clicked again", stacklevel=2)
-            self.open_button.click()
-            expect(self.panel, "the side menu didn't open").to_have_attribute(
-                "aria-hidden", "false"
-            )
+        expect(self.panel, "the side menu didn't open").to_be_visible()  # the click took effect
 
     def logout(self) -> None:
         self.open()
