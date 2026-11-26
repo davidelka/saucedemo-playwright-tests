@@ -43,6 +43,8 @@ wrong behavior with a workaround, or bad data · Low = cosmetic.
 | [BUG-010](#bug-010) | Finish doesn't complete the order | error_user | High | TC-CHECKOUT-013 |
 | [BUG-011](#bug-011) | The product list shows prices the cart doesn't charge | visual_user | High | TC-CART-012 |
 | [BUG-012](#bug-012) | Sauce Labs Backpack shows the "image not found" picture | visual_user | Low | TC-INV-007 |
+| [BUG-013](#bug-013) | With four products, the item total shows float rounding digits | standard_user | Low | TC-CHECKOUT-017 |
+| [BUG-014](#bug-014) | Checkout accepts names and postal code made only of spaces | standard_user | Medium | TC-CHECKOUT-018 |
 
 ## BUG-001
 
@@ -296,3 +298,47 @@ price, `$29.99` for the backpack.
 
 **Actual:** The site's "image not found" picture (`sl-404…jpg`), the same one `problem_user`
 sees for every product ([BUG-002](#bug-002)).
+
+## BUG-013
+
+**With four products, the item total shows float rounding digits**
+
+| | |
+|---|---|
+| Severity | Low: cosmetic; the amount, tax and total are right, only the item total's display is wrong |
+| User | `standard_user` (all users) |
+| Test | TC-CHECKOUT-017, `tests/ui/test_checkout.py::test_item_total_shows_dollars_and_cents` |
+
+**Steps**
+
+1. Log in as `standard_user`.
+2. Add Sauce Labs Backpack, Bike Light, Bolt T-Shirt and Fleece Jacket (the first four in
+   the list).
+3. Open the cart, click **Checkout**, fill in the form and click **Continue**.
+
+**Expected:** "Item total: $105.96".
+
+**Actual:** "Item total: $105.96000000000001". Tax ($8.48) and Total ($114.44) are right.
+The site seems to add the prices as floating-point numbers and print the sum without
+rounding: 1, 2, 3, 5 or 6 products (in list order) happen to add up exactly, so only some
+carts show it.
+
+## BUG-014
+
+**Checkout accepts names and postal code made only of spaces**
+
+| | |
+|---|---|
+| Severity | Medium: orders go through without real customer details (bad data) |
+| User | `standard_user` (all users) |
+| Test | TC-CHECKOUT-018, `tests/ui/test_checkout.py::test_fields_with_only_spaces_are_rejected` |
+
+**Steps**
+
+1. Log in as `standard_user`, add a product, open the cart and click **Checkout**.
+2. Type three spaces into First Name, Last Name and Postal Code.
+3. Click **Continue**.
+
+**Expected:** "Error: First Name is required", as with empty fields.
+
+**Actual:** The overview opens, and the order can be finished.

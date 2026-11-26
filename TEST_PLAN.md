@@ -125,6 +125,9 @@ Totals cases use the first products the page shows, and compute the expected ite
 | TC-CHECKOUT-013 | Finish completes the order, error_user (known bug BUG-010) | P1 | checkout, bug, user_error | Automated |
 | TC-CHECKOUT-014 | Empty Last Name shows "Error: Last Name is required" and stays on step one (standard_user, control for TC-CHECKOUT-015) | P2 | checkout, negative, bug, user_standard | Automated |
 | TC-CHECKOUT-015 | Empty Last Name blocks checkout, error_user (known bug BUG-009) | P2 | checkout, negative, bug, user_error | Automated |
+| TC-CHECKOUT-016 | Item total shows dollars and cents ("Item total: $29.99"), 1 product (control for TC-CHECKOUT-017) | P3 | checkout, bug, user_standard | Automated |
+| TC-CHECKOUT-017 | Item total shows dollars and cents, the first 4 products (known bug BUG-013) | P3 | checkout, bug, user_standard | Automated |
+| TC-CHECKOUT-018 | First Name, Last Name and Postal Code of only spaces show "First Name is required" and stay on step one (known bug BUG-014) | P2 | checkout, negative, bug, user_standard | Automated |
 
 ## MENU: Side menu
 

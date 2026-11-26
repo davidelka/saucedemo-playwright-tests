@@ -227,3 +227,58 @@ def test_finish_completes_the_order(
     checkout_overview_page.finish()
     with bug_symptom():
         expect(checkout_complete_page.complete_header).to_have_text("Thank you for your order!")
+
+
+# The site adds prices as floats, like JavaScript does. The first four products add up to
+# 105.96000000000001, which the overview prints as it is; 1, 2, 3, 5 or 6 products happen
+# to add up exactly. One product is the control: the same check, which must pass.
+@pytest.mark.bug
+@pytest.mark.parametrize(
+    "count",
+    [
+        pytest.param(1, id="one-product", marks=tc("TC-CHECKOUT-016")),
+        pytest.param(
+            4,
+            id="four-products",
+            marks=[
+                tc("TC-CHECKOUT-017"),
+                xfail_bug("BUG-013", "the item total shows float rounding digits"),
+            ],
+        ),
+    ],
+)
+def test_item_total_shows_dollars_and_cents(
+    inventory_page: InventoryPage,
+    cart_page: CartPage,
+    checkout_info_page: CheckoutInfoPage,
+    checkout_overview_page: CheckoutOverviewPage,
+    count: int,
+) -> None:
+    chosen = inventory_page.products()[:count]
+    assert len(chosen) == count, f"precondition: need {count} products"
+    start_checkout(inventory_page, cart_page, chosen)
+    checkout_info_page.fill(CUSTOMER)
+    checkout_info_page.continue_()
+    expect(checkout_overview_page.finish_button).to_be_visible()  # reached the overview
+    subtotal = sum((p.price for p in chosen), Decimal(0))
+    with bug_symptom():
+        expect(checkout_overview_page.subtotal_label).to_have_text(f"Item total: ${subtotal}")
+
+
+BLANK = "   "
+
+
+@pytest.mark.bug
+@tc("TC-CHECKOUT-018")
+@pytest.mark.negative
+@xfail_bug("BUG-014", "fields with only spaces are accepted")
+def test_fields_with_only_spaces_are_rejected(
+    inventory_page: InventoryPage, cart_page: CartPage, checkout_info_page: CheckoutInfoPage
+) -> None:
+    start_checkout(inventory_page, cart_page, inventory_page.products()[:1])
+    checkout_info_page.fill(Customer(BLANK, BLANK, BLANK))
+    checkout_info_page.continue_()
+    # The same check passes for empty fields (TC-CHECKOUT-007).
+    with bug_symptom():
+        expect(checkout_info_page.error).to_have_text("Error: First Name is required")
+        expect(checkout_info_page.page).to_have_url(CheckoutInfoPage.URL)
