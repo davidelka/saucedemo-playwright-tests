@@ -26,6 +26,8 @@ testpaths = ["tests"]
 # Same defaults locally and in CI: on failure keep a Playwright trace and a screenshot
 # (in test-results/, and linked/embedded in the HTML report when --html is given).
 addopts = "--strict-markers --tracing=retain-on-failure --screenshot=only-on-failure --output=test-results"
+# An expected failure that starts passing fails the run, so a fixed bug is never missed.
+xfail_strict = true
 markers = [
     # Suite: how often it runs
     "smoke: fast critical-path checks, run on every PR",
@@ -43,7 +45,7 @@ markers = [
     "happy: positive flow, valid input",
     "negative: invalid input or a blocked action",
     # Known bugs
-    "bug: exposes a known bug (expected failure, see BUGS.md)",
+    "bug: known-bug test: a standard_user control that must pass, or an expected failure linked to BUGS.md",
     # User (added automatically from the user a test runs as)
     "user_standard: runs as standard_user",
     "user_locked_out: runs as locked_out_user",

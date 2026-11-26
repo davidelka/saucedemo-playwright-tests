@@ -44,7 +44,9 @@ def test_login_success(login_page: LoginPage, settings: Settings, page: Page) ->
             USE_REAL_PASSWORD,
             "Epic sadface: Sorry, this user has been locked out.",
             id="locked-out",
-            marks=tc("TC-LOGIN-004"),
+            # The user here is the username parameter, not the user fixture the
+            # automatic user tags read, so the tag is set by hand.
+            marks=[tc("TC-LOGIN-004"), pytest.mark.user_locked_out],
         ),
         pytest.param(
             "",

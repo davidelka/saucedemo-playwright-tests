@@ -8,3 +8,6 @@ __pycache__/
 .ruff_cache/
 .superpowers/
 *.docx
+
+# LibreOffice lock files (e.g. while the assignment docx is open)
+.~lock.*#

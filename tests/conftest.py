@@ -37,9 +37,12 @@ def settings() -> Settings:
 
 
 @pytest.fixture(scope="session")
-def base_url(settings: Settings) -> str:
-    """Overrides pytest-base-url's fixture: relative ``page.goto("/x")`` resolves against it."""
-    return settings.base_url
+def base_url(settings: Settings, pytestconfig: pytest.Config) -> str:
+    """Overrides pytest-base-url's fixture: relative ``page.goto("/x")`` resolves against it.
+
+    ``--base-url`` on the command line wins; otherwise ``SAUCE_BASE_URL`` or the default.
+    """
+    return str(pytestconfig.getoption("base_url") or settings.base_url)
 
 
 @pytest.fixture(scope="session")
