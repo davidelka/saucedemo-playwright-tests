@@ -8,8 +8,9 @@ Python with Playwright (sync API, through pytest-playwright).
 - **Core flows:** login, sorting, cart, checkout totals and checkout validation.
 - **Known bugs:** bugs of `problem_user`, `error_user` and one of `standard_user` are tests
   that are expected to fail, each linked to a report in [BUGS.md](BUGS.md).
-- **CI:** GitHub Actions runs the suite on Chromium and Firefox in parallel. Each run keeps
-  an HTML report, a traceability report and the traces of failed tests.
+- **CI:** GitHub Actions runs the suite on Chromium and Firefox in parallel, and every night
+  on WebKit too, with each test run three times. Each run keeps an HTML report, a
+  traceability report and the traces of failed tests.
 
 Other documents: [TEST_PLAN.md](TEST_PLAN.md) (every test case and its ID),
 [BUGS.md](BUGS.md) (bug reports), [STRATEGY.md](STRATEGY.md) (test strategy).
@@ -118,26 +119,36 @@ and network log. You can also drop the file on https://trace.playwright.dev.
 ## CI
 
 The workflow is `.github/workflows/ci.yml`. It runs on a push to `main`, on every pull
-request, and from the "Run workflow" button. A newer push to the same branch cancels the
-run still in progress.
+request, every night at 03:00 UTC (on `main`), and from the "Run workflow" button. A newer
+push to the same branch cancels the run still in progress. Nightly runs are grouped
+separately, so a push never cancels a nightly run, and a nightly run never cancels a push.
 
 | Job | What it does |
 |---|---|
 | **Lint, types, unit tests** | `ruff check`, `ruff format --check`, `mypy`, then the unit tests (no browser) |
-| **Tests (chromium)** and **Tests (firefox)** | Starts after the first job passes. A matrix runs one job per browser, in parallel; one failing does not cancel the other. Installs the browser (cached), then runs the whole suite with `-n auto` and one rerun for failed tests (`--reruns 1`). |
+| **Tests (chromium)** and **Tests (firefox)** | Starts after the first job passes. A matrix runs one job per browser, in parallel; one failing does not cancel the others. Installs the browser (cached), then runs the whole suite with `-n auto` and one rerun for failed tests (`--reruns 1`). |
+
+**Nightly run.** The scheduled run adds a **Tests (webkit)** job and runs each test three
+times (`--count 3`, pytest-repeat), still with one rerun. Each browser job may take 30
+minutes instead of 15. To start one by hand on any branch, tick **nightly** under "Run
+workflow", or:
+
+```bash
+gh workflow run ci.yml --ref <branch> -f nightly=true
+```
 
 Artifacts, per browser, kept for 14 days:
 
 | Artifact | Contents | Uploaded |
 |---|---|---|
 | `report-<browser>` | HTML report and `traceability.md` | always |
-| `traces-<browser>` | `test-results/`: traces and screenshots of failed tests | only when the job fails |
+| `traces-<browser>` | `test-results/`: the trace and screenshot of every failed attempt, including a test that then passed on its rerun | unless the run was cancelled; no artifact when nothing failed |
 
-<!-- TODO: confirm after pass 1/3: traces are uploaded whenever tests ran (`if: !cancelled()`), so a flaky test's trace is kept even when the job passes -->
+Because traces are uploaded even when the job passes, a flaky test (shown as "passed on
+rerun" in the traceability report) still has the trace of the attempt that failed.
 
-The password comes from the repository variable `SAUCE_PASSWORD`, not from the code.
-<!-- TODO: confirm after pass 1/3: password moves to a GitHub secret -->
-<!-- TODO: confirm after pass 1/3: nightly schedule (see STRATEGY.md) -->
+The password comes from the repository secret `SAUCE_PASSWORD`, not from the code. GitHub
+masks secrets, so the job log shows `SAUCE_PASSWORD: ***`.
 
 ## Project structure
 
@@ -309,18 +320,14 @@ measures how long that took.
 
 - **Runs against the live public site.** If Sauce Demo is down or changes, the run fails.
   One rerun absorbs short glitches, not outages.
-- **Traces of flaky tests are lost in CI.** A test that passes on its rerun is marked flaky
-  in the traceability report, but its trace is uploaded only when the job fails.
-  <!-- TODO: confirm after pass 1/3: fixed by uploading with !cancelled() -->
 - **The one-time login that creates a saved session has no trace.** It runs in its own
   context, outside pytest-playwright's tracing; if it fails, you get the error message only.
-- **Not covered:** WebKit, `visual_user`'s layout differences (no screenshot tests),
-  accessibility, and the burger menu (logout, reset app state).
-- **No nightly run yet.** <!-- TODO: confirm after pass 1/3 -->
+- **WebKit runs only nightly,** not on pull requests.
+- **Not covered:** `visual_user`'s layout differences (no screenshot tests), accessibility,
+  and the burger menu (logout, reset app state).
 
-Next, in order: the performance check above, a nightly run with WebKit and `--count 3`, a
-quarantine marker with an owner and an expiry date (see STRATEGY.md), then accessibility
-checks with axe on the main pages.
+Next, in order: the performance check above, a quarantine marker with an owner and an
+expiry date (see STRATEGY.md), then accessibility checks with axe on the main pages.
 
 ## Use of AI
 

@@ -83,10 +83,10 @@ format and type checks in CI. Next:
 A flaky test passes and fails on the same code. It costs trust, so it is handled at once.
 
 1. **Rerun once, and say so.** CI reruns a failed test once (`--reruns 1`). If it then
-   passes, the traceability report and job summary show "🔁 passed on rerun (flaky)", not a
-   plain pass. Locally the failed attempt's trace stays in `test-results/`; today CI uploads
-   traces only when the job fails.
-   <!-- TODO: retry policy not final; confirm after pass 1/3 that CI uploads traces whenever tests ran -->
+   passes, the job stays green, but the traceability report and job summary show
+   "🔁 passed on rerun (flaky)", not a plain pass. The failed attempt's trace and
+   screenshot stay in `test-results/`, and CI uploads that folder whenever tests ran, not
+   only when the job fails, so every flake comes with the trace of its failure.
 2. **Fix it, or quarantine it.** The owning team reads the trace. If the fix isn't quick,
    the test is quarantined with an owner, a ticket and an expiry date: it runs nightly but
    doesn't block pull requests, and after the date it is fixed or deleted. (Not built yet:
@@ -95,8 +95,9 @@ A flaky test passes and fails on the same code. It costs trust, so it is handled
    condition the test needs instead, as this framework does: `expect(...).to_have_text(...)`
    retries until the list is sorted, and the cart is read only once its list is visible.
 4. **An intermittent product bug is a bug, not a flake.** It goes in BUGS.md.
-5. **Find flakes before pull requests do:** a nightly run (planned) repeats each test three
-   times (`--count 3`).
+5. **Find flakes before pull requests do:** the nightly run repeats each test three times
+   (`--count 3`) in Chromium, Firefox and WebKit. If one of the three attempts needed its
+   rerun, the case shows as flaky in that night's report.
 
 ## How you would decide which tests run on every pull request versus nightly
 
@@ -111,7 +112,8 @@ there is no reason to run less.
 purchase), and the tests tagged with the features the change touches. The full
 cross-browser suite moves to the merge into `main`.
 
-**Nightly:** everything a pull request runs, plus WebKit, the main flows as all six users,
-`--count 3` to catch flaky tests, and slower checks such as time budgets. A failure opens a
-ticket for the team that owns the feature.
-<!-- TODO: confirm after pass 1/3: nightly schedule added to ci.yml -->
+**Nightly** (03:00 UTC, the same `ci.yml`): everything a pull request runs, plus WebKit,
+with every test run three times (`--count 3`) to catch flaky tests. It can also be started
+by hand ("Run workflow" with **nightly** ticked). As the suite grows, slower checks would
+join it: the main flows as all six users, and time budgets (planned, see the README). In a
+team, a nightly failure would open a ticket for the team that owns the feature.
