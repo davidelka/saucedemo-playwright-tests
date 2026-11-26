@@ -2,8 +2,8 @@
 
 Written as if Sauce Demo were a product my team owns.
 
-**Today:** 77 tests (48 UI, 29 unit tests of the framework) covering the 69 cases in
-TEST_PLAN.md; 12 UI tests are known bugs, run as expected failures. On a 4-core, 8-thread
+**Today:** 89 tests (52 UI, 37 unit tests of the framework) covering the 76 cases in
+TEST_PLAN.md; 14 UI tests are known bugs, run as expected failures. On a 4-core, 8-thread
 laptop the unit tests take about 2 seconds, and with `-n auto` the UI suite takes about 40
 seconds in Chromium and 53 in Firefox. <!-- TODO: re-measure after pass 1/3 adds bugs, and add the CI run time -->
 

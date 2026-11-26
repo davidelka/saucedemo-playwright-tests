@@ -70,7 +70,7 @@ This runs everything in Chromium, headless, with one worker process per logical 
 All tags are listed in `pyproject.toml` under `markers`. Because of `--strict-markers`, a
 misspelled tag is an error, both on a test and after `-m` (pytest stops with "Unknown
 marker(s) in '-m' expression"). Login-form tests don't use the `user` fixture, so they get
-no user tag, and `-m user_locked_out` selects nothing.
+no automatic user tag; the locked-out case (TC-LOGIN-004) has `user_locked_out` set by hand.
 
 Code checks (CI runs the same):
 
@@ -145,7 +145,7 @@ The password comes from the repository variable `SAUCE_PASSWORD`, not from the c
 framework/                  reusable code, no tests
   config.py                 settings from SAUCE_* environment variables or .env
   auth.py                   log a user in once and save the session (storage state)
-  bugs.py                   xfail_bug(): known-bug marker linked to BUGS.md
+  bugs.py                   xfail_bug() and bug_symptom(): known bugs linked to BUGS.md
   money.py                  parse_price() and expected_tax(), with Decimal
   flows.py                  steps that span pages (start_checkout)
   tagging.py                pytest plugin: adds layer and user tags automatically
@@ -210,21 +210,27 @@ is the test that catches that.
 rounded to the cent with `ROUND_HALF_UP`. *Why:* a float can't hold 15.99 exactly, so sums
 can drift. Python's `round()` and `Decimal`'s default both round half to even
 (0.125 → 0.12), which is not how shops round money; half-up is written down explicitly.
-<!-- TODO: confirm after pass 1/3: price parsing becomes strict (today it takes the first "$N.NN" anywhere in the text) -->
+`parse_price` matches the whole label and keeps every digit shown: `"$89.8"` is 89.8 and
+`"$105.96000000000001"` stays as it is, so a wrongly shown price fails the comparison
+instead of being rounded into a pass. Text that isn't a price (`"-$5.00"`, `"$1,299.00"`)
+raises an error.
 
 **Known bugs are strict expected failures, most with a control case.** `xfail_bug("BUG-005",
 "…")` (in `framework/bugs.py`) is `pytest.mark.xfail` with `strict=True`,
-`raises=AssertionError` and a reason that links to BUGS.md. `strict=True`: when the bug is
-fixed the test passes, and the run fails with `XPASS(strict)`, so the marker gets removed.
-`raises=AssertionError`: only a failed check counts as the bug. A failed `expect(...)` is
-one: it retries for up to 5 seconds, then raises `AssertionError`. A click or fill that
-can't find its element raises Playwright's `TimeoutError` instead, so it still fails the
-run, as does any other error. Bug tests that run as several users also run as `standard_user`,
+`raises=BugSymptom` and a reason that links to BUGS.md. `strict=True`: when the bug is
+fixed the test passes, and the run fails with `XPASS(strict)`, so the marker gets removed
+(`xfail_strict = true` in `pyproject.toml` makes every other xfail strict too).
+`raises=BugSymptom`: only the bug's own check counts. Each bug test wraps that one check in
+`with bug_symptom():`, which re-raises a failure there as `BugSymptom`. A failure before
+it (a page that didn't load, a setup step) stays a plain `AssertionError` or
+`TimeoutError` and fails the run. That matters because a failed `expect(...)` also raises
+`AssertionError`: without the block, a broken setup step would be reported as the known
+bug. A bug test without the block can never be an expected failure, so a forgotten block
+shows up as a red run. Bug tests that run as several users also run as `standard_user`,
 where the same check must pass. That proves the test checks the right thing. (BUG-001 is a
 `standard_user` bug, so its test has no control case.)
 *Why:* a known bug shouldn't turn CI red every day, but an expected failure must never hide
 a broken test or a fixed bug.
-<!-- TODO: confirm after pass 1/3: only the bug's own check is wrapped in bug_symptom() (framework/bugs.py), so a failed setup step fails the run instead of counting as the bug -->
 
 **Test-case IDs and a traceability report.** Every test, or each case of a parametrized
 test, has one `@tc("TC-<AREA>-<NNN>")` mark that matches a row in TEST_PLAN.md. After the
@@ -253,7 +259,7 @@ here.
 
 | Playwright Test (TypeScript) | Here (pytest) |
 |---|---|
-| `test.fail()` | `xfail_bug(...)`: `pytest.mark.xfail(strict=True, raises=AssertionError)` |
+| `test.fail()` | `xfail_bug(...)`: `pytest.mark.xfail(strict=True, raises=BugSymptom)`, with the bug check inside `bug_symptom()` |
 | Setup project + `storageState` | `auth_state` fixture + `new_context(storage_state=...)` in `logged_in_page` |
 | `projects` (one per browser) | `--browser chromium --browser firefox`; in CI, a matrix job per browser |
 | `trace: 'retain-on-failure'` | `--tracing=retain-on-failure` (in `addopts`, `pyproject.toml`) |
@@ -264,7 +270,7 @@ here.
 | `test.extend()` fixtures | pytest fixtures in `tests/conftest.py` |
 | Tags + `--grep @smoke` | markers + `-m smoke` |
 | `use: { testIdAttribute: 'data-test' }` | `playwright.selectors.set_test_id_attribute("data-test")` |
-| `use: { baseURL }` | `base_url` fixture, from `SAUCE_BASE_URL` |
+| `use: { baseURL }` | `base_url` fixture: `--base-url`, else `SAUCE_BASE_URL` |
 | HTML reporter | pytest-html: `--html reports/report.html --self-contained-html` |
 
 ## Assumptions
@@ -306,9 +312,6 @@ measures how long that took.
 - **Traces of flaky tests are lost in CI.** A test that passes on its rerun is marked flaky
   in the traceability report, but its trace is uploaded only when the job fails.
   <!-- TODO: confirm after pass 1/3: fixed by uploading with !cancelled() -->
-- **A known-bug test also passes as "expected failure" if an earlier step fails its
-  check.** `raises=AssertionError` applies to the whole test.
-  <!-- TODO: confirm after pass 1/3: fixed by bug_symptom() -->
 - **The one-time login that creates a saved session has no trace.** It runs in its own
   context, outside pytest-playwright's tracing; if it fails, you get the error message only.
 - **Not covered:** WebKit, `visual_user`'s layout differences (no screenshot tests),
