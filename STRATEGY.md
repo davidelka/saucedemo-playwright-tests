@@ -2,12 +2,12 @@
 
 Written as if Sauce Demo were a product my team owns.
 
-**Today:** 101 tests (64 UI, 37 unit tests of the framework) covering the 88 cases in
-TEST_PLAN.md; 20 UI tests cover the 16 known bugs and run as expected failures. On a
+**Today:** 111 tests (72 UI, 39 unit tests of the framework) covering the 98 cases in
+TEST_PLAN.md; 24 UI tests cover the 17 known bugs and run as expected failures. On a
 4-core, 8-thread laptop the unit tests take about a second, and with `-n auto` the UI
-suite takes about 46 seconds in Chromium and 55 in Firefox. In CI, a push or pull request
+suite takes about 61 seconds in Chromium and 78 in Firefox. In CI, a push or pull request
 run takes about 4 minutes from start to finish; the slowest part is the Firefox tests
-(about 2.5 minutes with two workers on GitHub's 2-core runner for private repositories;
+(about 3 minutes with two workers on GitHub's 2-core runner for private repositories;
 public repositories get 4 cores).
 
 The rule throughout: **test each rule at the lowest layer that can catch it**, and keep UI
@@ -53,8 +53,8 @@ those checks would move down a layer.
   "About". At most, check the link's address.
 - **Every combination through the UI.** All products × all fields × all users belongs in
   unit or API tests; the UI keeps one case per rule.
-- **Load testing.** It needs its own tool (k6, Locust) and environment. The UI suite would
-  keep only simple time budgets (planned, see the README).
+- **Load testing.** It needs its own tool (k6, Locust) and environment. The UI suite
+  keeps only simple time budgets (`tests/ui/test_performance.py`).
 - **Judgment calls:** whether a layout looks right or wording is clear. Automated
   accessibility checks catch part of it; the rest needs a person.
 
@@ -118,5 +118,5 @@ cross-browser suite moves to the merge into `main`.
 **Nightly** (03:00 UTC, the same `ci.yml`): everything a pull request runs, plus WebKit,
 with every test run three times (`--count 3`) to catch flaky tests. It can also be started
 by hand ("Run workflow" with **nightly** ticked). As the suite grows, slower checks would
-join it: the main flows as all six users, and time budgets (planned, see the README). In a
-team, a nightly failure would open a ticket for the team that owns the feature.
+join it, such as the main flows as all six users. (The time budgets already run on every
+pull request: they take seconds.) In a team, a nightly failure would open a ticket for the team that owns the feature.

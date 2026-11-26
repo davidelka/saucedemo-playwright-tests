@@ -7,8 +7,10 @@ Python with Playwright (sync API, through pytest-playwright).
 
 - **Core flows:** login, sorting, cart, checkout totals and checkout validation, and the
   side menu (logout, About, Reset App State).
-- **Known bugs:** bugs of `problem_user`, `error_user`, `visual_user` and `standard_user`
-  are tests that are expected to fail, each linked to a report in [BUGS.md](BUGS.md).
+- **Performance (bonus):** pages that show the product list must appear within 2 seconds;
+  for `performance_glitch_user` the page freezes for 5 (see [below](#bonus-performance)).
+- **Known bugs:** bugs of `problem_user`, `error_user`, `visual_user`,
+  `performance_glitch_user` and `standard_user` are tests that are expected to fail, each linked to a report in [BUGS.md](BUGS.md).
 - **CI:** GitHub Actions runs the suite on Chromium and Firefox in parallel, and every night
   on WebKit too, with each test run three times. Each run keeps an HTML report, a
   traceability report and the traces of failed tests.
@@ -37,7 +39,8 @@ cp .env.example .env
 - `uv sync --locked` installs the exact versions from `uv.lock` into `.venv`.
 - `playwright install` downloads the browsers. On a fresh Linux machine add `--with-deps`
   to also install the system libraries they need (CI does this).
-- `.env` holds `SAUCE_BASE_URL` and `SAUCE_PASSWORD`. The password is the public demo
+- `.env` holds `SAUCE_BASE_URL` and `SAUCE_PASSWORD` (and, optionally,
+  `SAUCE_PAGE_BUDGET_SECONDS`). The password is the public demo
   password shown on the login page. The code has no default for it: if it is missing,
   every browser test errors at setup with a validation error that names `password`
   (unit tests still run).
@@ -57,6 +60,7 @@ This runs everything in Chromium, headless, with one worker process per logical 
 | Known-bug tests, with each bug's reason | `uv run pytest -m bug -rx` |
 | One feature | `uv run pytest -m login` (also `inventory`, `cart`, `checkout`, `menu`) |
 | Positive or negative cases | `uv run pytest -m happy` or `-m negative` |
+| Response-time checks | `uv run pytest -m performance` |
 | One user | `uv run pytest -m user_problem` (also `user_standard`, `user_error`, …) |
 | Browser tests only | `uv run pytest -m ui` |
 | Framework unit tests (no browser) | `uv run pytest -m unit` |
@@ -161,6 +165,7 @@ framework/                  reusable code, no tests
   money.py                  parse_price() and expected_tax(), with Decimal
   flows.py                  steps that span pages (start_checkout)
   tagging.py                pytest plugin: adds layer and user tags automatically
+  timing.py                 seconds_until(): how long an action takes to show a page
   testcase.py               pytest plugin: tc() IDs, --tc, traceability report
   components/               header.py (cart link and badge), menu.py (side menu),
                             product_item.py
@@ -175,7 +180,6 @@ BUGS.md                     bug reports
 STRATEGY.md                 test strategy
 pyproject.toml              dependencies, pytest options and tags, ruff, mypy
 .github/workflows/ci.yml    CI pipeline
-docs/superpowers/plans/     the implementation plan written before coding
 ```
 
 ## Key design decisions
@@ -302,21 +306,43 @@ here.
 - **Products with the same price have no defined order.** Two products cost $15.99, so the
   price-sort tests compare prices only, not names.
 
-## Bonus: performance (planned, not built)
+## Bonus: performance
 
-<!-- TODO: performance bonus not built yet; update this section when it is -->
+`tests/ui/test_performance.py` times four actions that bring up the product list: logging
+in, sorting, **Back to products** and **Continue Shopping**. Each is timed from the click
+until the list is visible, and must take at most 2 seconds.
 
-Already in place: `performance_glitch_user` logs in without any sleep. The saved-session
-login waits for the inventory URL with Playwright's 30-second navigation timeout, not the
-5-second assertion timeout (TC-AUTH-003).
+| User | Measured | Result |
+|---|---|---|
+| `standard_user` (control) | 0.07–0.19 s, also with 8 workers running | passes |
+| `performance_glitch_user` | 5.05–5.36 s | expected failure, [BUG-017](BUGS.md#bug-017) |
 
-Plan: measured locally, this user takes about 5 seconds from clicking Login to seeing the
-product list; `standard_user` takes about 0.1 seconds. A test would time each key action
-(log in, open the cart, each checkout step) up to the point where the next page is shown,
-and assert it stays under a budget of about 2 seconds. It would run as `standard_user`,
-where it must pass, and as `performance_glitch_user`, where it is a strict expected failure
-linked to a BUGS.md entry. No sleeps: Playwright waits for the page, the test only
-measures how long that took.
+```bash
+uv run pytest -m performance
+```
+
+How it works:
+
+- **No sleeps.** `seconds_until(action, shown)` (`framework/timing.py`) reads the clock,
+  runs the action, and checks `shown.is_visible()` again and again until it is true. It
+  doesn't use `expect()`: `expect()` retries at growing intervals (100, 250, 500, then
+  1000 ms), so it can see a page up to a second after it appeared. Against a page made to
+  answer after exactly 1.3 seconds, `expect()` was 0.53 s late and the loop 0.03–0.05 s.
+- **The budget is a setting:** `page_budget_seconds`, 2.0 by default. A slower machine or
+  environment raises it without a code change: `SAUCE_PAGE_BUDGET_SECONDS=3`. Two seconds
+  is at least ten times what `standard_user` needs and well under the glitch's 5 seconds, so
+  network noise doesn't make the tests flaky.
+- **Only the budget is the bug.** The assertion `seconds <= budget` is the only thing
+  inside `bug_symptom()`. If the page never appears (15 s), the test fails.
+- **Why only the product list:** I timed every page for both users (the table in
+  BUG-017). `performance_glitch_user` is slow exactly where the product list appears; the
+  product page, the cart and the checkout steps are as fast as for `standard_user`.
+- **What the delay is:** the page doesn't load slowly, it freezes. A recorder in the page
+  saw no frame painted for 5 seconds right after the click, and the list was added only
+  after that.
+
+This checks one user-visible delay against a budget, measured from the test machine on the
+live site. It isn't load testing (see STRATEGY.md).
 
 ## Known limitations and next steps
 
@@ -328,12 +354,12 @@ measures how long that took.
 - **Not covered:** `visual_user`'s layout differences (no screenshot tests), and
   accessibility.
 
-Next, in order: the performance check above, a quarantine marker with an owner and an
-expiry date (see STRATEGY.md), then accessibility checks with axe on the main pages.
+Next, in order: a quarantine marker with an owner and an expiry date (see STRATEGY.md),
+then accessibility checks with axe on the main pages.
 
 ## Use of AI
 
 I used an AI coding assistant (Claude Code) while building this: to draft code, tests and
 documents, and to review them. I made the design decisions, checked every change, ran the
-suite locally and in CI, and can explain each part. The implementation plan in
-`docs/superpowers/plans/` was written with the assistant at the start.
+suite locally and in CI, and can explain each part. Before writing code, I planned the work
+with the assistant.

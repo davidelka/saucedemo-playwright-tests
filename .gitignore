@@ -7,6 +7,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .superpowers/
+# Working notes and the implementation plan written with the AI assistant (kept local)
+docs/superpowers/
 *.docx
 
 # LibreOffice lock files (e.g. while the assignment docx is open)
