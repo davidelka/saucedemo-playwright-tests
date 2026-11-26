@@ -45,6 +45,8 @@ wrong behavior with a workaround, or bad data · Low = cosmetic.
 | [BUG-012](#bug-012) | Sauce Labs Backpack shows the "image not found" picture | visual_user | Low | TC-INV-007 |
 | [BUG-013](#bug-013) | With four products, the item total shows float rounding digits | standard_user | Low | TC-CHECKOUT-017 |
 | [BUG-014](#bug-014) | Checkout accepts names and postal code made only of spaces | standard_user | Medium | TC-CHECKOUT-018 |
+| [BUG-015](#bug-015) | The About link goes to an error page | problem_user | Low | TC-MENU-004 |
+| [BUG-016](#bug-016) | Reset App State leaves the products' buttons on "Remove" | standard_user | Medium | TC-MENU-005 |
 
 ## BUG-001
 
@@ -342,3 +344,42 @@ carts show it.
 **Expected:** "Error: First Name is required", as with empty fields.
 
 **Actual:** The overview opens, and the order can be finished.
+
+## BUG-015
+
+**The About link goes to an error page**
+
+| | |
+|---|---|
+| Severity | Low: a secondary link, not part of shopping |
+| User | `problem_user` |
+| Test | TC-MENU-004, `tests/ui/test_menu.py::test_about_link_points_to_sauce_labs` |
+
+**Steps**
+
+1. Log in as `problem_user`.
+2. Open the menu (☰) and click **About** (or look at where it points).
+
+**Expected:** https://saucelabs.com/, as for `standard_user`.
+
+**Actual:** https://saucelabs.com/error/404, a "page not found" page.
+
+## BUG-016
+
+**Reset App State leaves the products' buttons on "Remove"**
+
+| | |
+|---|---|
+| Severity | Medium: wrong behavior with a workaround (reloading the page fixes the buttons) |
+| User | `standard_user` (all users) |
+| Test | TC-MENU-005, `tests/ui/test_menu.py::test_reset_app_state_empties_the_cart` |
+
+**Steps**
+
+1. Log in as `standard_user` and add two products to the cart.
+2. Open the menu (☰) and click **Reset App State**.
+
+**Expected:** The cart badge disappears, and every product's button reads **Add to cart**.
+
+**Actual:** The badge disappears, but the two products still show **Remove** until the page
+is reloaded. The test has no control case, because `standard_user` has this bug.
