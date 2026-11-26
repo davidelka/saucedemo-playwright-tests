@@ -38,6 +38,8 @@ class InventoryPage:
         self.page = page
         self.header = Header(page)
         self.title = page.get_by_test_id("title")
+        # Only this page has it (product details and cart rows reuse "inventory-item").
+        self.product_list = page.get_by_test_id("inventory-list")
         self.sort_select = page.get_by_test_id("product-sort-container")
         self.items = page.get_by_test_id("inventory-item")
         # One label per card, in display order. Use with expect(...).to_have_text([...]).

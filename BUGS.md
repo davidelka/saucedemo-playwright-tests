@@ -1,8 +1,8 @@
 # Bugs
 
 Found on https://www.saucedemo.com on 2026-11-26 (Playwright 1.65.2, Chromium and Firefox).
-`problem_user` and `error_user` were compared action by action against `standard_user`;
-only differences that reproduce are listed.
+`problem_user`, `error_user`, `visual_user` and `performance_glitch_user` were compared
+action by action against `standard_user`; only differences that reproduce are listed.
 
 Every bug has an automated test marked with `xfail_bug(...)` (see `framework/bugs.py`):
 
@@ -47,6 +47,7 @@ wrong behavior with a workaround, or bad data · Low = cosmetic.
 | [BUG-014](#bug-014) | Checkout accepts names and postal code made only of spaces | standard_user | Medium | TC-CHECKOUT-018 |
 | [BUG-015](#bug-015) | The About link goes to an error page | problem_user | Low | TC-MENU-004 |
 | [BUG-016](#bug-016) | Reset App State leaves the products' buttons on "Remove" | standard_user | Medium | TC-MENU-005 |
+| [BUG-017](#bug-017) | The product list freezes the page for 5 seconds each time it appears | performance_glitch_user | Medium | TC-PERF-002, TC-PERF-004, TC-PERF-006, TC-PERF-008 |
 
 ## BUG-001
 
@@ -383,3 +384,44 @@ carts show it.
 
 **Actual:** The badge disappears, but the two products still show **Remove** until the page
 is reloaded. The test has no control case, because `standard_user` has this bug.
+
+## BUG-017
+
+**The product list freezes the page for 5 seconds each time it appears**
+
+| | |
+|---|---|
+| Severity | Medium: shopping still works, but every visit to the product list costs 5 seconds |
+| User | `performance_glitch_user` |
+| Test | TC-PERF-002, TC-PERF-004, TC-PERF-006, TC-PERF-008, `tests/ui/test_performance.py` |
+
+**Steps**
+
+1. Log in as `performance_glitch_user`.
+2. On the product list, sort by **Name (Z to A)**. Or open a product and click **Back to
+   products**, or open the cart and click **Continue Shopping**.
+
+**Expected:** The product list appears within 2 seconds (the budget, `page_budget_seconds`).
+For `standard_user` it takes about 0.1 seconds.
+
+**Actual:** About 5 seconds every time, in Chromium and Firefox. During that time the page
+paints nothing: the previous page stays on screen, frozen, and then the product list
+appears. A recorder in the page (`requestAnimationFrame`) saw no frame for 4,983 ms in
+Chromium and 5,000 ms in Firefox right after the click, and the list was added to the page
+only after that. A slow network wouldn't stop the page from painting, so the time goes to
+work on the page's main thread.
+
+Time from the click until the next page showed, two runs per browser (Chromium and Firefox
+gave the same numbers):
+
+| Action | standard_user | performance_glitch_user |
+|---|---|---|
+| Log in | 0.07–0.10 s | 5.07–5.10 s |
+| Sort | 0.01–0.03 s | 5.01–5.02 s |
+| Back to products (from a product) | 0.05–0.07 s | 5.07–5.08 s |
+| Continue Shopping (from the cart) | 0.05–0.07 s | 5.06–5.10 s |
+| Back Home (after an order) | 0.06–0.07 s | 5.07–5.10 s |
+| Product page, cart, checkout steps | 0.04–0.10 s | 0.05–0.10 s |
+
+Back Home has no test of its own: it's the same delay, and reaching it takes a whole
+checkout.

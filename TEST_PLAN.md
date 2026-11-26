@@ -142,6 +142,23 @@ the test never opens the external site.
 | TC-MENU-004 | The About link points to https://saucelabs.com/, problem_user (known bug BUG-015) | P3 | menu, bug, user_problem | Automated |
 | TC-MENU-005 | Reset App State hides the badge and every product's button reads "Add to cart" again (known bug BUG-016) | P2 | menu, bug, user_standard | Automated |
 
+## PERF: Response time
+
+Each case times one action, from the click until the next page is visible, and compares it
+with the budget `page_budget_seconds` (2 s by default, `SAUCE_PAGE_BUDGET_SECONDS` to
+change it). The time is measured to within about 50 ms (see `framework/timing.py`).
+
+| ID | Title | Priority | Tags | Status |
+|----|-------|----------|------|--------|
+| TC-PERF-001 | After Login, the product list appears within the budget (standard_user, control for TC-PERF-002) | P2 | performance, bug, user_standard | Automated |
+| TC-PERF-002 | After Login, the product list appears within the budget, performance_glitch_user (known bug BUG-017) | P2 | performance, bug, user_performance_glitch | Automated |
+| TC-PERF-003 | Sorting Z-A shows the new order within the budget (standard_user, control for TC-PERF-004) | P2 | performance, bug, user_standard | Automated |
+| TC-PERF-004 | Sorting Z-A shows the new order within the budget, performance_glitch_user (known bug BUG-017) | P2 | performance, bug, user_performance_glitch | Automated |
+| TC-PERF-005 | Back to products shows the product list within the budget (standard_user, control for TC-PERF-006) | P2 | performance, bug, user_standard | Automated |
+| TC-PERF-006 | Back to products shows the product list within the budget, performance_glitch_user (known bug BUG-017) | P2 | performance, bug, user_performance_glitch | Automated |
+| TC-PERF-007 | Continue Shopping shows the product list within the budget (standard_user, control for TC-PERF-008) | P2 | performance, bug, user_standard | Automated |
+| TC-PERF-008 | Continue Shopping shows the product list within the budget, performance_glitch_user (known bug BUG-017) | P2 | performance, bug, user_performance_glitch | Automated |
+
 ## CFG: Configuration
 
 | ID | Title | Priority | Tags | Status |
@@ -175,3 +192,5 @@ the test never opens the external site.
 | TC-UNIT-020 | `xfail_bug`: a failed check before `bug_symptom()` (a setup step) fails the run, not counted as the bug | P2 | unit | Automated |
 | TC-UNIT-021 | `bug_symptom()` keeps the failure message and the original error | P3 | unit | Automated |
 | TC-UNIT-022 | `parse_price` keeps every digit shown (`$89.8` -> 89.8, `$105.96000000000001` as shown), never rounds or cuts | P2 | unit | Automated |
+| TC-UNIT-023 | `seconds_until` measures from the start of the action until the element is visible, then stops checking | P2 | unit | Automated |
+| TC-UNIT-024 | `seconds_until` fails with "didn't appear within …" when the element never becomes visible, instead of hanging | P2 | unit | Automated |

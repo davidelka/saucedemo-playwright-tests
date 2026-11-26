@@ -17,7 +17,13 @@ class LoginPage:
     def open(self) -> None:
         self.page.goto(self.PATH)
 
-    def login(self, username: str, password: str) -> None:
+    def fill(self, username: str, password: str) -> None:
         self.username.fill(username)
         self.password.fill(password)
+
+    def submit(self) -> None:
         self.login_button.click()
+
+    def login(self, username: str, password: str) -> None:
+        self.fill(username, password)
+        self.submit()

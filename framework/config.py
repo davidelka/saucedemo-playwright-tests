@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     base_url: str = "https://www.saucedemo.com"
     # No default on purpose: a missing password fails fast with a clear error.
     password: SecretStr
+    # Response-time budget for a page to appear (tests/ui/test_performance.py). A slower
+    # environment can raise it with SAUCE_PAGE_BUDGET_SECONDS, without a code change.
+    page_budget_seconds: float = 2.0
 
 
 @cache

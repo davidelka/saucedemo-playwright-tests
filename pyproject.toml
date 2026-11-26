@@ -35,13 +35,13 @@ markers = [
     # Layer (added automatically from the folder, see framework/tagging.py)
     "unit: framework unit tests, no browser",
     "ui: browser tests against the site",
-    "visual: screenshot comparison tests (run in Docker)",
     # Feature
     "login: login and session",
     "inventory: product list and sorting",
     "cart: cart badge and contents",
     "checkout: checkout flow, totals and validation",
     "menu: side menu (logout, About, Reset App State)",
+    "performance: response-time budgets",
     # Flow
     "happy: positive flow, valid input",
     "negative: invalid input or a blocked action",

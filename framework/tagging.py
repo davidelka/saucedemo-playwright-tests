@@ -15,7 +15,7 @@ import pytest
 
 from framework.data.users import DEFAULT_USER
 
-LAYER_BY_DIR = {"unit": "unit", "ui": "ui", "visual": "visual"}
+LAYER_BY_DIR = {"unit": "unit", "ui": "ui"}
 USER_PARAM = "user"
 TESTS_DIR = "tests"
 
