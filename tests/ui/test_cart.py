@@ -47,12 +47,16 @@ def test_add_products_updates_badge_and_cart(
 
 @tc("TC-CART-002")
 @pytest.mark.happy
-def test_remove_from_inventory_updates_badge(inventory_page: InventoryPage) -> None:
+def test_remove_from_inventory_leaves_the_other_product(
+    inventory_page: InventoryPage, cart_page: CartPage
+) -> None:
     first, second = inventory_page.products()[:2]
     inventory_page.add_to_cart(first.name)
     inventory_page.add_to_cart(second.name)
     inventory_page.remove_from_cart(first.name)
     expect(inventory_page.header.cart_badge).to_have_text("1")
+    inventory_page.header.open_cart()
+    assert cart_page.items() == [line(second)], "the wrong product was removed"
 
 
 @tc("TC-CART-003")

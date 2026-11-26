@@ -89,7 +89,7 @@ Cases use the first products the page shows and expect the price the product lis
 | ID | Title | Priority | Tags | Status |
 |----|-------|----------|------|--------|
 | TC-CART-001 | Adding 2 products shows badge "2" and both in the cart at their listed price, quantity 1 | P1 | cart, happy, smoke | Automated |
-| TC-CART-002 | Removing a product from the product list lowers the badge | P2 | cart, happy | Automated |
+| TC-CART-002 | Removing one of two products from the product list lowers the badge to 1 and leaves only the other product in the cart | P2 | cart, happy | Automated |
 | TC-CART-003 | Removing the last item in the cart hides the badge and empties the cart | P2 | cart, negative | Automated |
 | TC-CART-004 | Cart keeps its items after Continue Shopping and reopening it | P2 | cart, happy | Automated |
 | TC-CART-005 | Every product can be added: badge and cart show them all (standard_user, control) | P1 | cart, bug, user_standard | Automated |
