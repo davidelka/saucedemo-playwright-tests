@@ -63,6 +63,8 @@ cases read the products from the page, so a new or repriced product fails only T
 | TC-INV-003 | Each product has its own image, problem_user (known bug BUG-002) | P2 | inventory, bug, user_problem | Automated |
 | TC-INV-004 | Each product's link opens that product (standard_user, control for TC-INV-005) | P1 | inventory, bug, user_standard | Automated |
 | TC-INV-005 | Each product's link opens that product, problem_user (known bug BUG-004) | P1 | inventory, bug, user_problem | Automated |
+| TC-INV-006 | No product shows the "image not found" picture (standard_user, control for TC-INV-007) | P3 | inventory, bug, user_standard | Automated |
+| TC-INV-007 | No product shows the "image not found" picture, visual_user (known bug BUG-012) | P3 | inventory, bug, user_visual | Automated |
 
 ## SORT: Product sorting
 
@@ -98,6 +100,8 @@ Cases use the first products the page shows and expect the price the product lis
 | TC-CART-008 | A product can be removed from the product list (standard_user, control) | P2 | cart, bug, user_standard | Automated |
 | TC-CART-009 | A product can be removed from the product list, problem_user (known bug BUG-006) | P2 | cart, bug, user_problem | Automated |
 | TC-CART-010 | A product can be removed from the product list, error_user (known bug BUG-006) | P2 | cart, bug, user_error | Automated |
+| TC-CART-011 | The cart charges the price the product list showed, for every product (standard_user, control for TC-CART-012) | P1 | cart, bug, user_standard | Automated |
+| TC-CART-012 | The cart charges the price the product list showed, visual_user (known bug BUG-011) | P1 | cart, bug, user_visual | Automated |
 
 ## CHECKOUT: Checkout
 

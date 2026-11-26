@@ -123,3 +123,33 @@ def test_product_can_be_removed_from_the_list(inventory_page: InventoryPage, use
     inventory_page.remove_from_cart(product.name)
     with bug_symptom():
         expect(inventory_page.header.cart_badge).to_be_hidden()
+
+
+@pytest.mark.bug
+@pytest.mark.parametrize(
+    "user",
+    [
+        pytest.param(User.STANDARD, marks=tc("TC-CART-011")),
+        pytest.param(
+            User.VISUAL,
+            marks=[
+                tc("TC-CART-012"),
+                xfail_bug("BUG-011", "the product list shows prices the cart doesn't charge"),
+            ],
+        ),
+    ],
+)
+def test_cart_charges_the_listed_price(
+    inventory_page: InventoryPage, cart_page: CartPage, user: User
+) -> None:
+    listed = inventory_page.products()
+    for product in listed:
+        inventory_page.add_to_cart(product.name)
+    inventory_page.header.open_cart()
+    in_cart = cart_page.items()
+    names = [item.name for item in in_cart]
+    assert names == [p.name for p in listed], "precondition: every product is in the cart"
+    with bug_symptom():
+        assert [item.price for item in in_cart] == [p.price for p in listed], (
+            "the cart charges a different price than the product list showed"
+        )

@@ -73,3 +73,29 @@ def test_product_link_opens_that_product(
     # Collect every product first, so one failure shows all the wrong links.
     with bug_symptom():
         assert opened == {name: name for name in opened}, "a link opened a different product"
+
+
+# The site's "image not found" picture (problem_user sees it for every product, BUG-002).
+NOT_FOUND_IMAGE = "sl-404"
+
+
+@pytest.mark.bug
+@pytest.mark.parametrize(
+    "user",
+    [
+        pytest.param(User.STANDARD, marks=tc("TC-INV-006")),
+        pytest.param(
+            User.VISUAL,
+            marks=[
+                tc("TC-INV-007"),
+                xfail_bug("BUG-012", "a product shows the 'image not found' picture"),
+            ],
+        ),
+    ],
+)
+def test_no_product_shows_the_not_found_image(inventory_page: InventoryPage, user: User) -> None:
+    names = [p.name for p in inventory_page.products()]
+    images = inventory_page.product_images()
+    with bug_symptom():
+        broken = [n for n, src in zip(names, images, strict=True) if NOT_FOUND_IMAGE in src]
+        assert broken == [], f"shows the 'image not found' picture: {broken}"

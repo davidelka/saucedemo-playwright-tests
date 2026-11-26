@@ -41,6 +41,8 @@ wrong behavior with a workaround, or bad data · Low = cosmetic.
 | [BUG-008](#bug-008) | Sorting shows "Sorting is broken!" and doesn't sort | error_user | Medium | TC-SORT-007, TC-SORT-009 |
 | [BUG-009](#bug-009) | Last Name ignores typing, checkout continues without it | error_user | Medium | TC-CHECKOUT-011, TC-CHECKOUT-015 |
 | [BUG-010](#bug-010) | Finish doesn't complete the order | error_user | High | TC-CHECKOUT-013 |
+| [BUG-011](#bug-011) | The product list shows prices the cart doesn't charge | visual_user | High | TC-CART-012 |
+| [BUG-012](#bug-012) | Sauce Labs Backpack shows the "image not found" picture | visual_user | Low | TC-INV-007 |
 
 ## BUG-001
 
@@ -251,3 +253,46 @@ ahead without a last name.
 **Expected:** "Thank you for your order!" is shown.
 
 **Actual:** Nothing happens: the page stays on "Checkout: Overview".
+
+## BUG-011
+
+**The product list shows prices the cart doesn't charge**
+
+| | |
+|---|---|
+| Severity | High: the price a customer sees isn't the price they pay |
+| User | `visual_user` |
+| Test | TC-CART-012, `tests/ui/test_cart.py::test_cart_charges_the_listed_price` |
+
+**Steps**
+
+1. Log in as `visual_user` and note the prices on the product list.
+2. Reload the page and note them again.
+3. Add Sauce Labs Backpack to the cart and open the cart.
+
+**Expected:** The list shows the same prices on every load, and the cart charges the price
+the list showed.
+
+**Actual:** The list shows different random prices on every load (for example `$52.35`, then
+`$4.12`; some with one decimal, such as `$6.5`). The cart and checkout charge the real
+price, `$29.99` for the backpack.
+
+## BUG-012
+
+**Sauce Labs Backpack shows the "image not found" picture**
+
+| | |
+|---|---|
+| Severity | Low: cosmetic |
+| User | `visual_user` |
+| Test | TC-INV-007, `tests/ui/test_inventory.py::test_no_product_shows_the_not_found_image` |
+
+**Steps**
+
+1. Log in as `visual_user`.
+2. Look at Sauce Labs Backpack on the product list.
+
+**Expected:** The backpack's photo, as `standard_user` sees it.
+
+**Actual:** The site's "image not found" picture (`sl-404…jpg`), the same one `problem_user`
+sees for every product ([BUG-002](#bug-002)).
