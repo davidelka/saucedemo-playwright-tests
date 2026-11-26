@@ -7,7 +7,8 @@ TEST_PLAN.md; 20 UI tests cover the 16 known bugs and run as expected failures. 
 4-core, 8-thread laptop the unit tests take about a second, and with `-n auto` the UI
 suite takes about 46 seconds in Chromium and 55 in Firefox. In CI, a push or pull request
 run takes about 4 minutes from start to finish; the slowest part is the Firefox tests
-(about 2.5 minutes on GitHub's 4-core runner).
+(about 2.5 minutes with two workers on GitHub's 2-core runner for private repositories;
+public repositories get 4 cores).
 
 The rule throughout: **test each rule at the lowest layer that can catch it**, and keep UI
 tests for what only a browser can show.
